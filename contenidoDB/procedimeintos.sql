@@ -248,3 +248,302 @@ BEGIN
 END$$
 DELIMITER ;
 
+-- Insertar Ubicación
+CREATE PROCEDURE sp_insertar_ubicacion(
+    IN p_descripcion VARCHAR(100)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error al insertar ubicación' AS mensaje;
+        ROLLBACK;
+    END;
+    START TRANSACTION;
+        INSERT INTO mae_ubicacion(descripcion) VALUES (p_descripcion);
+        SELECT LAST_INSERT_ID() AS id_ubicacion;
+    COMMIT;
+END$$
+
+
+-- Insertar Identidad
+CREATE PROCEDURE sp_insertar_identidad(
+    IN p_tipo_identificacion VARCHAR(20),
+    IN p_codigo_documento VARCHAR(15)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error al insertar identidad' AS mensaje;
+        ROLLBACK;
+    END;
+    START TRANSACTION;
+        INSERT INTO mae_identidad(tipo_identificacion, codigo_documento)
+        VALUES (p_tipo_identificacion, p_codigo_documento);
+        SELECT LAST_INSERT_ID() AS id_identidad;
+    COMMIT;
+END$$
+
+
+-- Insertar Cliente
+CREATE PROCEDURE sp_insertar_cliente(
+    IN p_nombre VARCHAR(50),
+    IN p_apellido VARCHAR(50),
+    IN p_id_ubicacion INT,
+    IN p_id_identidad INT
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error al insertar cliente' AS mensaje;
+        ROLLBACK;
+    END;
+    START TRANSACTION;
+        INSERT INTO mae_cliente(nombre, apellido, id_ubicacion, id_identidad)
+        VALUES (p_nombre, p_apellido, p_id_ubicacion, p_id_identidad);
+        SELECT LAST_INSERT_ID() AS id_cliente;
+    COMMIT;
+END$$
+
+
+-- Insertar Empresa
+CREATE PROCEDURE sp_insertar_empresa(
+    IN p_nombre VARCHAR(50),
+    IN p_razon_social VARCHAR(100),
+    IN p_RUC CHAR(11),
+    IN p_id_ubicacion INT
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error al insertar empresa' AS mensaje;
+        ROLLBACK;
+    END;
+    START TRANSACTION;
+        INSERT INTO mae_empresa(nombre, razon_social, RUC, id_ubicacion)
+        VALUES (p_nombre, p_razon_social, p_RUC, p_id_ubicacion);
+        SELECT LAST_INSERT_ID() AS id_empresa;
+    COMMIT;
+END$$
+
+
+-- Insertar Conductor
+CREATE PROCEDURE sp_insertar_conductor(
+    IN p_nombre VARCHAR(50),
+    IN p_n_licencia CHAR(12)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error al insertar conductor' AS mensaje;
+        ROLLBACK;
+    END;
+    START TRANSACTION;
+        INSERT INTO mae_conductor(nombre, n_licencia)
+        VALUES (p_nombre, p_n_licencia);
+        SELECT LAST_INSERT_ID() AS id_conductor;
+    COMMIT;
+END$$
+
+
+-- Insertar Vehículo
+CREATE PROCEDURE sp_insertar_vehiculo(
+    IN p_descripcion VARCHAR(50),
+    IN p_placa CHAR(8)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error al insertar vehículo' AS mensaje;
+        ROLLBACK;
+    END;
+    START TRANSACTION;
+        INSERT INTO mae_vehiculo(descripcion, placa)
+        VALUES (p_descripcion, p_placa);
+        SELECT LAST_INSERT_ID() AS id_vehiculo;
+    COMMIT;
+END$$
+
+
+-- Insertar Producto
+CREATE PROCEDURE sp_insertar_producto(
+    IN p_nombre VARCHAR(50),
+    IN p_descripcion VARCHAR(100),
+    IN p_precio_base DECIMAL(10,2),
+    IN p_stock INT,
+    IN p_unidad_medida VARCHAR(10)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error al insertar producto' AS mensaje;
+        ROLLBACK;
+    END;
+    START TRANSACTION;
+        INSERT INTO mae_producto(nombre, descripcion, precio_base, stock, unidad_medida)
+        VALUES (p_nombre, p_descripcion, p_precio_base, p_stock, p_unidad_medida);
+        SELECT LAST_INSERT_ID() AS id_producto;
+    COMMIT;
+END$$
+
+
+-- Insertar Forma de Pago
+CREATE PROCEDURE sp_insertar_forma_pago(
+    IN p_nombre VARCHAR(35),
+    IN p_descripcion VARCHAR(100)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error al insertar forma de pago' AS mensaje;
+        ROLLBACK;
+    END;
+    START TRANSACTION;
+        INSERT INTO mae_forma_pago(nombre, descripcion)
+        VALUES (p_nombre, p_descripcion);
+        SELECT LAST_INSERT_ID() AS id_forma_pago;
+    COMMIT;
+END$$
+
+
+-- Insertar Moneda
+CREATE PROCEDURE sp_insertar_moneda(
+    IN p_codigo_iso CHAR(3),
+    IN p_nombre VARCHAR(20)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error al insertar moneda' AS mensaje;
+        ROLLBACK;
+    END;
+    START TRANSACTION;
+        INSERT INTO mae_moneda(codigo_iso, nombre)
+        VALUES (p_codigo_iso, p_nombre);
+        SELECT LAST_INSERT_ID() AS id_moneda;
+    COMMIT;
+END$$
+
+
+-- =========================
+-- PROCEDIMIENTOS TRANSACCIONALES
+-- =========================
+
+-- Insertar Encabezado Documento
+CREATE PROCEDURE sp_insertar_encabezado_documento(
+    IN p_tipo_doc VARCHAR(20),
+    IN p_fecha_emision DATE,
+    IN p_id_empresa INT,
+    IN p_id_cliente INT,
+    IN p_id_forma_pago INT,
+    IN p_id_moneda INT
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error al insertar encabezado documento' AS mensaje;
+        ROLLBACK;
+    END;
+    START TRANSACTION;
+        INSERT INTO trs_encabezado_documento(
+            tipo_doc, fecha_emision, id_empresa, id_cliente, id_forma_pago, id_moneda
+        )
+        VALUES (p_tipo_doc, p_fecha_emision, p_id_empresa, p_id_cliente, p_id_forma_pago, p_id_moneda);
+        SELECT LAST_INSERT_ID() AS id_documento;
+    COMMIT;
+END$$
+
+
+-- Insertar Detalle Documento
+CREATE PROCEDURE sp_insertar_detalle_documento(
+    IN p_id_documento INT,
+    IN p_id_producto INT,
+    IN p_cantidad INT,
+    IN p_subtotal DECIMAL(10,2),
+    IN p_igv DECIMAL(10,2),
+    IN p_importe DECIMAL(10,2)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error al insertar detalle documento' AS mensaje;
+        ROLLBACK;
+    END;
+    START TRANSACTION;
+        INSERT INTO trs_detalle_documento(
+            id_documento, id_producto, cantidad, subtotal, igv, importe
+        ) VALUES (p_id_documento, p_id_producto, p_cantidad, p_subtotal, p_igv, p_importe);
+        SELECT LAST_INSERT_ID() AS id_detalle;
+    COMMIT;
+END$$
+
+
+-- Insertar Encabezado Guía
+CREATE PROCEDURE sp_insertar_encabezado_guia(
+    IN p_id_doc_venta INT,
+    IN p_nro_guia VARCHAR(20),
+    IN p_fecha_emision DATE,
+    IN p_fecha_inicio_traslado DATE,
+    IN p_motivo_traslado VARCHAR(100),
+    IN p_direccion_partida VARCHAR(150),
+    IN p_direccion_llegada VARCHAR(150),
+    IN p_id_conductor INT,
+    IN p_id_vehiculo INT
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error al insertar encabezado guía' AS mensaje;
+        ROLLBACK;
+    END;
+    START TRANSACTION;
+        INSERT INTO trs_encabezado_guia(
+            id_doc_venta, nro_guia, fecha_emision, fecha_inicio_traslado, motivo_traslado,
+            direccion_partida, direccion_llegada, id_conductor, id_vehiculo
+        )
+        VALUES (
+            p_id_doc_venta, p_nro_guia, p_fecha_emision, p_fecha_inicio_traslado,
+            p_motivo_traslado, p_direccion_partida, p_direccion_llegada, p_id_conductor, p_id_vehiculo
+        );
+        SELECT LAST_INSERT_ID() AS id_guia;
+    COMMIT;
+END$$
+
+
+-- Insertar Detalle Guía
+CREATE PROCEDURE sp_insertar_detalle_guia(
+    IN p_id_guia INT,
+    IN p_id_producto INT,
+    IN p_descripcion VARCHAR(100),
+    IN p_unidad_medida VARCHAR(10),
+    IN p_unidad_peso_bruto VARCHAR(10),
+    IN p_peso_total_carga DECIMAL(10,2),
+    IN p_modalidad_trans VARCHAR(20),
+    IN p_transbordo_prog CHAR(2),
+    IN p_categoriaM1_L CHAR(2),
+    IN p_retorno_envases CHAR(2),
+    IN p_vehiculo_vacio CHAR(2),
+    IN p_id_conductor INT,
+    IN p_id_vehiculo INT
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error al insertar detalle guía' AS mensaje;
+        ROLLBACK;
+    END;
+    START TRANSACTION;
+        INSERT INTO trs_detalle_guia(
+            id_guia, id_producto, descripcion, unidad_medida, unidad_peso_bruto,
+            peso_total_carga, modalidad_trans, transbordo_prog, categoriaM1_L,
+            retorno_envases, vehiculo_vacio, id_conductor, id_vehiculo
+        )
+        VALUES (
+            p_id_guia, p_id_producto, p_descripcion, p_unidad_medida, p_unidad_peso_bruto,
+            p_peso_total_carga, p_modalidad_trans, p_transbordo_prog, p_categoriaM1_L,
+            p_retorno_envases, p_vehiculo_vacio, p_id_conductor, p_id_vehiculo
+        );
+        SELECT LAST_INSERT_ID() AS id_detalle_guia;
+    COMMIT;
+END$$
+
+DELIMITER ;
