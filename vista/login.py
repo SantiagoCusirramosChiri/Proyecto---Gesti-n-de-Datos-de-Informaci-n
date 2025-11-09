@@ -175,13 +175,16 @@ def iniciar_sesion():
         resultado = LoginBL.validar_login(usuario, ruc)
         
         if resultado:  # ← Cambio aquí: resultado es True/False directamente
+
+            id_empresa = LoginBL.obtener_id_empresa(usuario, ruc)
+            
             messagebox.showinfo(
                 "✅ Éxito",
                 f"¡Bienvenido {usuario}!",
                 parent=ventana
             )
             ventana.destroy()
-            abrir_index()
+            abrir_index(usuario, id_empresa)
         else:
             btn_login.configure(text="INICIAR SESIÓN", state="normal")
             messagebox.showerror(

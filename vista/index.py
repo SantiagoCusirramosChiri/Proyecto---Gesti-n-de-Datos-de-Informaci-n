@@ -2,29 +2,29 @@
 import customtkinter as ctk
 from PIL import Image
 
-def abrir_index(nombre_empresa, id_empresa):
-    """Abre el dashboard principal del sistema"""
-    
+def abrir_index(nombre_empresa: str, id_empresa: int):
+    """Abre la ventana principal de presentación del sistema"""
+
     # --- Ventana principal ---
-    ventana_dashboard = ctk.CTk()
-    ventana_dashboard.title(f"IRONtomb - {nombre_empresa}")
-    ventana_dashboard.geometry("1400x800")
-    ventana_dashboard.resizable(True, True)
-    
+    ventana_presentacion = ctk.CTk()
+    ventana_presentacion.title(f"IRONtomb - {nombre_empresa}")
+    ventana_presentacion.geometry("1400x800")
+    ventana_presentacion.resizable(True, True)
+
     # Configurar tema oscuro
     ctk.set_appearance_mode("dark")
-    ventana_dashboard.configure(fg_color="#1a1a1a")
-    
+    ventana_presentacion.configure(fg_color="#1a1a1a")
+
     # --- SIDEBAR (Menú lateral) ---
     sidebar = ctk.CTkFrame(
-        ventana_dashboard, 
-        width=280, 
-        corner_radius=0, 
+        ventana_presentacion,
+        width=280,
+        corner_radius=0,
         fg_color="#242424"
     )
     sidebar.pack(side="left", fill="y")
     sidebar.pack_propagate(False)
-    
+
     # Frame scrollable para el contenido del sidebar
     sidebar_scroll = ctk.CTkScrollableFrame(
         sidebar,
@@ -33,11 +33,11 @@ def abrir_index(nombre_empresa, id_empresa):
         scrollbar_button_hover_color="#B71C1C"
     )
     sidebar_scroll.pack(fill="both", expand=True)
-    
+
     # Logo y título en sidebar
     frame_logo = ctk.CTkFrame(sidebar_scroll, fg_color="transparent")
     frame_logo.pack(pady=(30, 20))
-    
+
     try:
         imagen_logo = ctk.CTkImage(
             light_image=Image.open("recursos/simbolo.png"),
@@ -49,7 +49,7 @@ def abrir_index(nombre_empresa, id_empresa):
     except:
         label_logo_alt = ctk.CTkLabel(frame_logo, text="🔥", font=("Arial", 40))
         label_logo_alt.pack()
-    
+
     label_sistema = ctk.CTkLabel(
         sidebar_scroll,
         text="IRONtomb",
@@ -57,7 +57,7 @@ def abrir_index(nombre_empresa, id_empresa):
         text_color="#DC143C"
     )
     label_sistema.pack(pady=(0, 5))
-    
+
     label_empresa = ctk.CTkLabel(
         sidebar_scroll,
         text=nombre_empresa,
@@ -65,14 +65,14 @@ def abrir_index(nombre_empresa, id_empresa):
         text_color="#8a8a8a"
     )
     label_empresa.pack(pady=(0, 30))
-    
+
     # Separador
     separador = ctk.CTkFrame(sidebar_scroll, height=2, fg_color="#3a3a3a")
     separador.pack(fill="x", padx=20, pady=(0, 20))
-    
+
     # Variable para rastrear el menú actualmente expandido
     menu_expandido = {"actual": None}
-    
+
     # --- Función para crear submenú item ---
     def crear_submenu_item(parent, texto, comando=None):
         btn = ctk.CTkButton(
@@ -90,10 +90,9 @@ def abrir_index(nombre_empresa, id_empresa):
         )
         btn.pack(fill="x", padx=(30, 15), pady=2)
         return btn
-    
+
     # --- Función para crear menú con acordeón ---
-   # --- Función para crear menú con acordeón ---
-    def crear_menu_acordeon(parent, texto, icono, submenus=None, es_dashboard=False):
+    def crear_menu_acordeon(parent, texto, icono, submenus=None, es_presentacion=False):
         # Frame contenedor
         frame_contenedor = ctk.CTkFrame(parent, fg_color="transparent")
         frame_contenedor.pack(fill="x", padx=15, pady=5)
@@ -110,7 +109,6 @@ def abrir_index(nombre_empresa, id_empresa):
             # Si hay otro menú expandido, cerrarlo
             if menu_expandido["actual"] is not None and menu_expandido["actual"] != estado:
                 menu_expandido["actual"]["expandido"] = False
-                # ✅ Verificar que el frame exista antes de cerrarlo
                 if menu_expandido["actual"]["frame"] is not None:
                     menu_expandido["actual"]["frame"].pack_forget()
                 menu_expandido["actual"]["boton"].configure(
@@ -156,7 +154,6 @@ def abrir_index(nombre_empresa, id_empresa):
                     "texto": texto
                 }
 
-            # 🔥 Actualizar el scroll del sidebar
             sidebar_scroll._parent_canvas.configure(scrollregion=sidebar_scroll._parent_canvas.bbox("all"))
 
         # Botón principal
@@ -166,7 +163,7 @@ def abrir_index(nombre_empresa, id_empresa):
             command=toggle_acordeon,
             height=50,
             corner_radius=10,
-            fg_color="#DC143C" if es_dashboard else "transparent",
+            fg_color="#DC143C" if es_presentacion else "transparent",
             hover_color="#DC143C",
             text_color="white",
             font=("Arial", 13, "bold"),
@@ -175,19 +172,18 @@ def abrir_index(nombre_empresa, id_empresa):
         )
         btn_principal.pack(fill="x")
 
-        # Crear items del submenú
         if submenus:
             for submenu_texto in submenus:
                 crear_submenu_item(frame_submenu, submenu_texto)
 
         return frame_contenedor
-    
+
     # --- MENÚS DEL SIDEBAR ---
-    crear_menu_acordeon(sidebar, "Dashboard", "🏠", es_dashboard=True)
-    
+    crear_menu_acordeon(sidebar_scroll, "Presentación", "🏠", es_presentacion=True)
+
     crear_menu_acordeon(
-        sidebar, 
-        "Documentos", 
+        sidebar_scroll,
+        "Documentos",
         "📄",
         [
             "Crear Nuevo Documento",
@@ -197,9 +193,9 @@ def abrir_index(nombre_empresa, id_empresa):
             "Documentos Pendientes"
         ]
     )
-    
+
     crear_menu_acordeon(
-        sidebar,
+        sidebar_scroll,
         "Guías de Remisión",
         "🚚",
         [
@@ -209,9 +205,9 @@ def abrir_index(nombre_empresa, id_empresa):
             "Ver Detalles de Guía"
         ]
     )
-    
+
     crear_menu_acordeon(
-        sidebar,
+        sidebar_scroll,
         "Inventario",
         "📦",
         [
@@ -220,9 +216,9 @@ def abrir_index(nombre_empresa, id_empresa):
             "Ver Movimientos"
         ]
     )
-    
+
     crear_menu_acordeon(
-        sidebar,
+        sidebar_scroll,
         "Clientes",
         "👥",
         [
@@ -231,9 +227,9 @@ def abrir_index(nombre_empresa, id_empresa):
             "Ver Historial de Compras"
         ]
     )
-    
+
     crear_menu_acordeon(
-        sidebar,
+        sidebar_scroll,
         "Maestros",
         "⚙️",
         [
@@ -245,12 +241,12 @@ def abrir_index(nombre_empresa, id_empresa):
             "Monedas"
         ]
     )
-    
+
     # Separador inferior
     separador_inferior = ctk.CTkFrame(sidebar, height=2, fg_color="#3a3a3a")
     separador_inferior.pack(fill="x", padx=20, pady=(20, 20))
-    
-    # Botón cerrar sesión (abajo)
+
+    # Botón cerrar sesión
     btn_cerrar = ctk.CTkButton(
         sidebar,
         text="  🚪  Cerrar Sesión",
@@ -264,24 +260,24 @@ def abrir_index(nombre_empresa, id_empresa):
         border_spacing=10
     )
     btn_cerrar.pack(fill="x", padx=15, pady=(0, 20))
-    
+
     # --- ÁREA PRINCIPAL DE CONTENIDO ---
-    area_principal = ctk.CTkFrame(ventana_dashboard, fg_color="#1a1a1a", corner_radius=0)
+    area_principal = ctk.CTkFrame(ventana_presentacion, fg_color="#1a1a1a", corner_radius=0)
     area_principal.pack(side="right", fill="both", expand=True)
-    
+
     # --- HEADER ---
     header = ctk.CTkFrame(area_principal, height=80, fg_color="#242424", corner_radius=0)
     header.pack(fill="x", padx=0, pady=0)
     header.pack_propagate(False)
-    
+
     label_titulo_seccion = ctk.CTkLabel(
         header,
-        text="📊 Dashboard Principal",
+        text="🎯 Presentación del Sistema",
         font=("Arial Black", 26, "bold"),
         text_color="white"
     )
     label_titulo_seccion.pack(side="left", padx=30, pady=20)
-    
+
     label_fecha = ctk.CTkLabel(
         header,
         text="Domingo, 09 de Noviembre 2025",
@@ -289,8 +285,8 @@ def abrir_index(nombre_empresa, id_empresa):
         text_color="#8a8a8a"
     )
     label_fecha.pack(side="right", padx=30)
-    
-    # --- CONTENIDO PRINCIPAL (Scrollable) ---
+
+    # --- CONTENIDO PRINCIPAL ---
     contenedor_scroll = ctk.CTkScrollableFrame(
         area_principal,
         fg_color="transparent",
@@ -298,142 +294,24 @@ def abrir_index(nombre_empresa, id_empresa):
         scrollbar_button_hover_color="#B71C1C"
     )
     contenedor_scroll.pack(fill="both", expand=True, padx=30, pady=20)
-    
-    # --- SECCIÓN: MÉTRICAS PRINCIPALES ---
-    label_metricas = ctk.CTkLabel(
+
+    label_bienvenida = ctk.CTkLabel(
         contenedor_scroll,
-        text="Métricas Principales",
-        font=("Arial", 16, "bold"),
-        text_color="#b0b0b0",
-        anchor="w"
-    )
-    label_metricas.pack(fill="x", pady=(0, 15))
-    
-    # Grid de tarjetas de métricas
-    frame_metricas = ctk.CTkFrame(contenedor_scroll, fg_color="transparent")
-    frame_metricas.pack(fill="x", pady=(0, 30))
-    
-    # Configurar grid (3 columnas)
-    frame_metricas.grid_columnconfigure((0, 1, 2), weight=1)
-    
-    def crear_tarjeta_metrica(parent, titulo, valor, icono, color_acento, fila, columna):
-        tarjeta = ctk.CTkFrame(
-            parent,
-            fg_color="#242424",
-            corner_radius=15,
-            border_width=2,
-            border_color="#2d2d2d"
-        )
-        tarjeta.grid(row=fila, column=columna, padx=10, pady=10, sticky="nsew")
-        
-        # Icono
-        label_icono = ctk.CTkLabel(
-            tarjeta,
-            text=icono,
-            font=("Arial", 40),
-            text_color=color_acento
-        )
-        label_icono.pack(pady=(20, 5))
-        
-        # Valor
-        label_valor = ctk.CTkLabel(
-            tarjeta,
-            text=valor,
-            font=("Arial Black", 32, "bold"),
-            text_color="white"
-        )
-        label_valor.pack(pady=5)
-        
-        # Título
-        label_titulo_tarjeta = ctk.CTkLabel(
-            tarjeta,
-            text=titulo,
-            font=("Arial", 12),
-            text_color="#8a8a8a"
-        )
-        label_titulo_tarjeta.pack(pady=(0, 20))
-        
-        return tarjeta
-    
-    # Crear tarjetas de métricas (2 filas x 3 columnas) - Basadas en los SP disponibles
-    crear_tarjeta_metrica(frame_metricas, "Docs. Emitidos", "0", "📝", "#4CAF50", 0, 0)
-    crear_tarjeta_metrica(frame_metricas, "Docs. Pendientes", "0", "⏳", "#FF9800", 0, 1)
-    crear_tarjeta_metrica(frame_metricas, "Guías Pendientes", "0", "🚚", "#2196F3", 0, 2)
-    
-    crear_tarjeta_metrica(frame_metricas, "Stock Total", "0 unid.", "📦", "#9C27B0", 1, 0)
-    crear_tarjeta_metrica(frame_metricas, "Total Ventas", "S/ 0.00", "💰", "#DC143C", 1, 1)
-    crear_tarjeta_metrica(frame_metricas, "Clientes Activos", "0", "👥", "#00BCD4", 1, 2)
-    
-    # --- SECCIÓN: ACCESOS RÁPIDOS ---
-    label_accesos = ctk.CTkLabel(
-        contenedor_scroll,
-        text="Accesos Rápidos",
-        font=("Arial", 16, "bold"),
-        text_color="#b0b0b0",
-        anchor="w"
-    )
-    label_accesos.pack(fill="x", pady=(20, 15))
-    
-    frame_accesos = ctk.CTkFrame(contenedor_scroll, fg_color="transparent")
-    frame_accesos.pack(fill="x", pady=(0, 30))
-    frame_accesos.grid_columnconfigure((0, 1, 2), weight=1)
-    
-    def crear_boton_acceso(parent, texto, icono, color, fila, columna):
-        btn = ctk.CTkButton(
-            parent,
-            text=f"{icono}\n{texto}",
-            height=120,
-            corner_radius=15,
-            fg_color=color,
-            hover_color="#2d2d2d",
-            text_color="white",
-            font=("Arial", 14, "bold"),
-            border_width=2,
-            border_color="#3a3a3a"
-        )
-        btn.grid(row=fila, column=columna, padx=10, pady=10, sticky="nsew")
-        return btn
-    
-    crear_boton_acceso(frame_accesos, "Nuevo Documento", "📄", "#242424", 0, 0)
-    crear_boton_acceso(frame_accesos, "Nueva Guía Remisión", "🚚", "#242424", 0, 1)
-    crear_boton_acceso(frame_accesos, "Registrar Cliente", "👤", "#242424", 0, 2)
-    
-    crear_boton_acceso(frame_accesos, "Ver Stock", "📦", "#242424", 1, 0)
-    crear_boton_acceso(frame_accesos, "Ver Productos", "🏷️", "#242424", 1, 1)
-    crear_boton_acceso(frame_accesos, "Gestionar Maestros", "⚙️", "#242424", 1, 2)
-    
-    # --- SECCIÓN: ACTIVIDAD RECIENTE ---
-    label_actividad = ctk.CTkLabel(
-        contenedor_scroll,
-        text="Actividad Reciente",
-        font=("Arial", 16, "bold"),
-        text_color="#b0b0b0",
-        anchor="w"
-    )
-    label_actividad.pack(fill="x", pady=(20, 15))
-    
-    frame_actividad = ctk.CTkFrame(contenedor_scroll, fg_color="#242424", corner_radius=15)
-    frame_actividad.pack(fill="x", pady=(0, 20))
-    
-    # Mensaje cuando no hay actividad
-    label_sin_actividad = ctk.CTkLabel(
-        frame_actividad,
-        text="No hay actividad reciente\n\nEmpieza creando tu primer documento o guía de remisión",
-        font=("Arial", 13),
-        text_color="#6a6a6a",
+        text="Bienvenido a IRONtomb\n\nSistema de Gestión Documentaria e Inventario.",
+        font=("Arial", 18, "bold"),
+        text_color="white",
         justify="center"
     )
-    label_sin_actividad.pack(pady=60)
-    
-    # Centrar ventana
-    ventana_dashboard.update_idletasks()
-    x = (ventana_dashboard.winfo_screenwidth() // 2) - (ventana_dashboard.winfo_width() // 2)
-    y = (ventana_dashboard.winfo_screenheight() // 2) - (ventana_dashboard.winfo_height() // 2)
-    ventana_dashboard.geometry(f"+{x}+{y}")
-    
-    ventana_dashboard.mainloop()
+    label_bienvenida.pack(pady=50)
+
+    ventana_presentacion.update_idletasks()
+    x = (ventana_presentacion.winfo_screenwidth() // 2) - (ventana_presentacion.winfo_width() // 2)
+    y = (ventana_presentacion.winfo_screenheight() // 2) - (ventana_presentacion.winfo_height() // 2)
+    ventana_presentacion.geometry(f"+{x}+{y}")
+
+    ventana_presentacion.mainloop()
 
 
-# Para pruebas (comentar cuando se integre)
-if __name__ == "__main__":
-    abrir_index("Transportes El Rápido SAC", 1)
+# # Para pruebas
+# if __name__ == "__main__":
+#     abrir_index("Transportes El Rápido SAC", 1)
