@@ -159,9 +159,6 @@ entry_contrasena = ctk.CTkEntry(
 )
 entry_contrasena.pack(pady=(0, 10))
 
-# ============================================================================
-# FUNCIÓN DE INICIO DE SESIÓN
-# ============================================================================
 def iniciar_sesion():
     usuario = entry_usuario.get()
     ruc = entry_contrasena.get()
@@ -171,10 +168,9 @@ def iniciar_sesion():
     ventana.update()
 
     try:
-        # Usar LoginBL para validar (resultado es booleano)
         resultado = LoginBL.validar_login(usuario, ruc)
         
-        if resultado:  # ← Cambio aquí: resultado es True/False directamente
+        if resultado:
 
             id_empresa = LoginBL.obtener_id_empresa(usuario, ruc)
             
@@ -200,9 +196,6 @@ def iniciar_sesion():
             parent=ventana
         )
 
-# ============================================================================
-# BOTÓN DE INICIO DE SESIÓN
-# ============================================================================
 btn_login = ctk.CTkButton(
     frame_inputs,
     text="INICIAR SESIÓN",
@@ -218,24 +211,18 @@ btn_login = ctk.CTkButton(
 )
 btn_login.pack(pady=(15, 5))
 
-# Bind Enter key para login rápido
 entry_contrasena.bind("<Return>", lambda e: iniciar_sesion())
 entry_usuario.bind("<Return>", lambda e: entry_contrasena.focus())
 
-# ============================================================================
-# FUNCIÓN DE REGISTRO
-# ============================================================================
 def mostrar_ventana_registro():
     """Abre la ventana de registro y oculta el login"""
     try:
         from vista.registro import abrir_registro
-        ventana.withdraw()  # Ocultar ventana de login
+        ventana.withdraw()
         
-        # Función callback para volver al login
         def volver_al_login():
-            ventana.deiconify()  # Mostrar ventana de login nuevamente
+            ventana.deiconify()
         
-        # Abrir ventana de registro con el callback
         abrir_registro(volver_al_login)
         
     except ImportError as e:
@@ -253,9 +240,6 @@ def mostrar_ventana_registro():
         )
         print(f"Error al abrir registro: {e}")
 
-# ============================================================================
-# SECCIÓN DE REGISTRO
-# ============================================================================
 frame_registro = ctk.CTkFrame(
     frame_principal,
     fg_color="transparent"
@@ -273,7 +257,7 @@ label_registro.pack()
 btn_registro = ctk.CTkButton(
     frame_registro,
     text="REGISTRARSE AHORA",
-    command=mostrar_ventana_registro,  # ← Corregido aquí
+    command=mostrar_ventana_registro, 
     width=200,
     height=35,
     font=("Arial", 12, "bold"),
@@ -286,9 +270,7 @@ btn_registro = ctk.CTkButton(
 )
 btn_registro.pack(pady=5)
 
-# ============================================================================
-# FOOTER
-# ============================================================================
+
 label_footer = ctk.CTkLabel(
     ventana,
     text="© 2024 IRONtomb - Todos los derechos reservados",
@@ -297,7 +279,4 @@ label_footer = ctk.CTkLabel(
 )
 label_footer.pack(side="bottom", pady=10)
 
-# ============================================================================
-# INICIAR APLICACIÓN
-# ============================================================================
 ventana.mainloop()

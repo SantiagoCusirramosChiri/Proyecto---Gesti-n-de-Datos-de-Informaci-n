@@ -3,19 +3,15 @@ import customtkinter as ctk
 from PIL import Image
 
 def abrir_index(nombre_empresa: str, id_empresa: int):
-    """Abre la ventana principal de presentación del sistema"""
 
-    # --- Ventana principal ---
     ventana_presentacion = ctk.CTk()
     ventana_presentacion.title(f"IRONtomb - {nombre_empresa}")
     ventana_presentacion.geometry("1400x800")
     ventana_presentacion.resizable(True, True)
 
-    # Configurar tema oscuro
     ctk.set_appearance_mode("dark")
     ventana_presentacion.configure(fg_color="#1a1a1a")
 
-    # --- SIDEBAR (Menú lateral) ---
     sidebar = ctk.CTkFrame(
         ventana_presentacion,
         width=280,
@@ -25,7 +21,6 @@ def abrir_index(nombre_empresa: str, id_empresa: int):
     sidebar.pack(side="left", fill="y")
     sidebar.pack_propagate(False)
 
-    # Frame scrollable para el contenido del sidebar
     sidebar_scroll = ctk.CTkScrollableFrame(
         sidebar,
         fg_color="transparent",
@@ -34,7 +29,6 @@ def abrir_index(nombre_empresa: str, id_empresa: int):
     )
     sidebar_scroll.pack(fill="both", expand=True)
 
-    # Logo y título en sidebar
     frame_logo = ctk.CTkFrame(sidebar_scroll, fg_color="transparent")
     frame_logo.pack(pady=(30, 20))
 
@@ -66,14 +60,11 @@ def abrir_index(nombre_empresa: str, id_empresa: int):
     )
     label_empresa.pack(pady=(0, 30))
 
-    # Separador
     separador = ctk.CTkFrame(sidebar_scroll, height=2, fg_color="#3a3a3a")
     separador.pack(fill="x", padx=20, pady=(0, 20))
 
-    # Variable para rastrear el menú actualmente expandido
     menu_expandido = {"actual": None}
 
-    # --- Función para crear submenú item ---
     def crear_submenu_item(parent, texto, comando=None):
         btn = ctk.CTkButton(
             parent,
@@ -91,22 +82,17 @@ def abrir_index(nombre_empresa: str, id_empresa: int):
         btn.pack(fill="x", padx=(30, 15), pady=2)
         return btn
 
-    # --- Función para crear menú con acordeón ---
     def crear_menu_acordeon(parent, texto, icono, submenus=None, es_presentacion=False):
-        # Frame contenedor
         frame_contenedor = ctk.CTkFrame(parent, fg_color="transparent")
         frame_contenedor.pack(fill="x", padx=15, pady=5)
 
-        # Frame para submenú (si existe)
         frame_submenu = None
         if submenus:
             frame_submenu = ctk.CTkFrame(frame_contenedor, fg_color="transparent")
 
-        # Estado del acordeón
         estado = {"expandido": False}
 
         def toggle_acordeon():
-            # Si hay otro menú expandido, cerrarlo
             if menu_expandido["actual"] is not None and menu_expandido["actual"] != estado:
                 menu_expandido["actual"]["expandido"] = False
                 if menu_expandido["actual"]["frame"] is not None:
@@ -116,7 +102,6 @@ def abrir_index(nombre_empresa: str, id_empresa: int):
                     text=f"  {menu_expandido['actual']['icono']}  {menu_expandido['actual']['texto']}"
                 )
 
-            # Si no tiene submenú, solo activar el botón
             if not submenus:
                 btn_principal.configure(fg_color="#DC143C")
                 if menu_expandido["actual"]:
@@ -130,7 +115,6 @@ def abrir_index(nombre_empresa: str, id_empresa: int):
                 }
                 return
 
-            # Toggle del submenú
             if estado["expandido"]:
                 frame_submenu.pack_forget()
                 btn_principal.configure(
@@ -156,7 +140,6 @@ def abrir_index(nombre_empresa: str, id_empresa: int):
 
             sidebar_scroll._parent_canvas.configure(scrollregion=sidebar_scroll._parent_canvas.bbox("all"))
 
-        # Botón principal
         btn_principal = ctk.CTkButton(
             frame_contenedor,
             text=f"  {icono}  {texto}",
@@ -178,7 +161,6 @@ def abrir_index(nombre_empresa: str, id_empresa: int):
 
         return frame_contenedor
 
-    # --- MENÚS DEL SIDEBAR ---
     crear_menu_acordeon(sidebar_scroll, "Presentación", "🏠", es_presentacion=True)
 
     crear_menu_acordeon(
@@ -242,11 +224,9 @@ def abrir_index(nombre_empresa: str, id_empresa: int):
         ]
     )
 
-    # Separador inferior
     separador_inferior = ctk.CTkFrame(sidebar, height=2, fg_color="#3a3a3a")
     separador_inferior.pack(fill="x", padx=20, pady=(20, 20))
 
-    # Botón cerrar sesión
     btn_cerrar = ctk.CTkButton(
         sidebar,
         text="  🚪  Cerrar Sesión",
@@ -261,11 +241,9 @@ def abrir_index(nombre_empresa: str, id_empresa: int):
     )
     btn_cerrar.pack(fill="x", padx=15, pady=(0, 20))
 
-    # --- ÁREA PRINCIPAL DE CONTENIDO ---
     area_principal = ctk.CTkFrame(ventana_presentacion, fg_color="#1a1a1a", corner_radius=0)
     area_principal.pack(side="right", fill="both", expand=True)
 
-    # --- HEADER ---
     header = ctk.CTkFrame(area_principal, height=80, fg_color="#242424", corner_radius=0)
     header.pack(fill="x", padx=0, pady=0)
     header.pack_propagate(False)
@@ -286,7 +264,6 @@ def abrir_index(nombre_empresa: str, id_empresa: int):
     )
     label_fecha.pack(side="right", padx=30)
 
-    # --- CONTENIDO PRINCIPAL ---
     contenedor_scroll = ctk.CTkScrollableFrame(
         area_principal,
         fg_color="transparent",
