@@ -1,5 +1,5 @@
 # main.py
-from vista.login import ventana  # Importa la ventana de login
+from vista.login import abrir_login
 
-# Al ejecutar main.py, se abre la ventana de login
-# No hace falta más; todo flujo está en login.py
+if __name__ == "__main__":
+    abrir_login()
