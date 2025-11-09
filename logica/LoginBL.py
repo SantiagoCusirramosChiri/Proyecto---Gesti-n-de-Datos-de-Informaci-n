@@ -16,7 +16,7 @@ class LoginBL:
 
         try:
             # Llamamos al procedimiento real
-            resultados = procedimientos.sp_login_usuario(usuario, contrasena)
+            resultados = procedimientos.sp_login_empresa(usuario, contrasena)
 
             # Si el procedimiento devuelve al menos un registro, el login es correcto
             return len(resultados) > 0

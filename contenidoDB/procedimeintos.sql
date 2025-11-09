@@ -51,7 +51,7 @@ proc_end: BEGIN
     INTO v_id_ruc, v_activo_ruc, v_nombre_existente
     FROM mae_empresa
     WHERE RUC = p_ruc
-    LIMIT 1;x
+    LIMIT 1;
     
     -- Verificar si el nombre ya existe con otro RUC
     SELECT id_empresa 
