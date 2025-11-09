@@ -248,6 +248,13 @@ BEGIN
 END$$
 DELIMITER ;
 
+
+-- =========================
+-- PROCEDIMIENTOS MAESTROS
+-- =========================
+
+DELIMITER $$
+
 -- Insertar Ubicación
 CREATE PROCEDURE sp_insertar_ubicacion(
     IN p_descripcion VARCHAR(100)
