@@ -1,205 +1,226 @@
 # vista/registro.py
 import customtkinter as ctk
+from PIL import Image
 from tkinter import messagebox
 from logica.RegistroBL import RegistroBL
 
-# Colores
-COLOR_FONDO = "#0D0D0D"
-COLOR_FONDO_SECUNDARIO = "#1A1A1A"
-COLOR_ROJO_PRIMARY = "#DC143C"
-COLOR_ROJO_HOVER = "#B71C1C"
-COLOR_TEXTO = "#FFFFFF"
-COLOR_TEXTO_SECUNDARIO = "#CCCCCC"
-
-def centrar_ventana(ventana_obj, ancho, alto):
-    screen_width = ventana_obj.winfo_screenwidth()
-    screen_height = ventana_obj.winfo_screenheight()
-    x = (screen_width - ancho) // 2
-    y = (screen_height - alto) // 2
-    ventana_obj.geometry(f"{ancho}x{alto}+{x}+{y}")
-
-def crear_ventana_registro():
-    """Crea y retorna la ventana de registro"""
+def abrir_registro(volver_al_login_callback):
     
-    ventana = ctk.CTk()
-    ventana.title("Registro de Empresa - IRONTOMB")
-    ventana.geometry("500x700")
-    ventana.resizable(False, False)
-    ventana.configure(fg_color=COLOR_FONDO)
-    centrar_ventana(ventana, 500, 700)
-
-    # Frame principal
-    frame_principal = ctk.CTkFrame(
-        ventana,
-        fg_color=COLOR_FONDO_SECUNDARIO,
-        corner_radius=20,
-        border_width=2,
-        border_color=COLOR_ROJO_PRIMARY
+    ventana_registro = ctk.CTkToplevel()
+    ventana_registro.title("Registro de Empresa - IRONtomb")
+    ventana_registro.geometry("900x600")
+    ventana_registro.resizable(False, False)
+    ventana_registro.grab_set()
+    
+    ventana_registro.configure(fg_color="#1a1a1a")
+    
+    frame_principal = ctk.CTkFrame(ventana_registro, fg_color="transparent")
+    frame_principal.pack(fill="both", expand=True, padx=40, pady=40)
+    
+    frame_izquierdo = ctk.CTkFrame(frame_principal, fg_color="#DC143C", corner_radius=20)
+    frame_izquierdo.pack(side="left", fill="both", expand=True, padx=(0, 20))
+    
+    try:
+        imagen_logo = ctk.CTkImage(
+            light_image=Image.open("recursos/simbolo.png"),
+            dark_image=Image.open("recursos/simbolo.png"),
+            size=(180, 180)
+        )
+        label_logo = ctk.CTkLabel(frame_izquierdo, image=imagen_logo, text="", fg_color="transparent")
+        label_logo.pack(pady=(80, 30))
+    except Exception as e:
+        print(f"No se pudo cargar la imagen: {e}")
+    
+        label_logo_alt = ctk.CTkLabel(
+            frame_izquierdo,
+            text="🔥",
+            font=("Arial Black", 100),
+            fg_color="transparent"
+        )
+        label_logo_alt.pack(pady=(80, 30))
+    
+    label_bienvenida = ctk.CTkLabel(
+        frame_izquierdo,
+        text="Únete a\nIRONtomb",
+        font=("Arial Black", 32, "bold"),
+        text_color="white",
+        justify="center"
     )
-    frame_principal.pack(pady=20, padx=30, fill="both", expand=True)
-
-    # Título
-    ctk.CTkLabel(
-        frame_principal,
-        text="🔥",
-        font=("Arial Black", 60),
-        text_color=COLOR_ROJO_PRIMARY
-    ).pack(pady=(30, 10))
-
-    ctk.CTkLabel(
-        frame_principal,
-        text="Registro de Empresa",
+    label_bienvenida.pack(pady=20)
+    
+    label_subtitulo = ctk.CTkLabel(
+        frame_izquierdo,
+        text="Gestiona tu empresa de manera\neficiente y profesional",
+        font=("Arial", 14),
+        text_color="#ffdddd",
+        justify="center"
+    )
+    label_subtitulo.pack(pady=10)
+    
+    frame_derecho = ctk.CTkFrame(frame_principal, fg_color="#242424", corner_radius=20)
+    frame_derecho.pack(side="right", fill="both", expand=True)
+    
+    frame_form = ctk.CTkFrame(frame_derecho, fg_color="transparent")
+    frame_form.pack(fill="both", expand=True, padx=40, pady=40)
+    
+    label_titulo = ctk.CTkLabel(
+        frame_form,
+        text="Crear Cuenta",
         font=("Arial Black", 28, "bold"),
-        text_color=COLOR_ROJO_PRIMARY
-    ).pack(pady=(0, 10))
-
-    ctk.CTkLabel(
-        frame_principal,
-        text="Complete los datos para registrarse",
+        text_color="white"
+    )
+    label_titulo.pack(pady=(0, 10))
+    
+    label_subtitulo_form = ctk.CTkLabel(
+        frame_form,
+        text="Completa los datos de tu empresa",
         font=("Arial", 12),
-        text_color=COLOR_TEXTO_SECUNDARIO
-    ).pack(pady=(0, 30))
-
-    # Frame de inputs
-    frame_inputs = ctk.CTkFrame(frame_principal, fg_color="transparent")
-    frame_inputs.pack(pady=10, padx=40, fill="both", expand=True)
-
-    # Nombre de la empresa
-    ctk.CTkLabel(
-        frame_inputs,
+        text_color="#8a8a8a"
+    )
+    label_subtitulo_form.pack(pady=(0, 30))
+    
+    label_nombre = ctk.CTkLabel(
+        frame_form,
         text="Nombre de la Empresa",
-        font=("Arial", 12, "bold"),
-        text_color=COLOR_TEXTO,
+        font=("Arial", 11, "bold"),
+        text_color="#b0b0b0",
         anchor="w"
-    ).pack(anchor="w", pady=(0, 5))
-
+    )
+    label_nombre.pack(fill="x", pady=(0, 5))
+    
     entry_nombre = ctk.CTkEntry(
-        frame_inputs,
-        placeholder_text="Ej: Librería San Martín",
-        width=350,
+        frame_form,
+        placeholder_text="Ej: Transportes SAC",
         height=45,
-        font=("Arial", 13),
-        fg_color=COLOR_FONDO,
-        border_color=COLOR_ROJO_PRIMARY,
-        border_width=2,
-        text_color=COLOR_TEXTO
+        border_width=0,
+        corner_radius=10,
+        fg_color="#2d2d2d",
+        text_color="white",
+        placeholder_text_color="#6a6a6a",
+        font=("Arial", 12)
     )
-    entry_nombre.pack(pady=(0, 15))
-
-    # Razón Social
-    ctk.CTkLabel(
-        frame_inputs,
+    entry_nombre.pack(fill="x", pady=(0, 15))
+    
+    label_razon_social = ctk.CTkLabel(
+        frame_form,
         text="Razón Social",
-        font=("Arial", 12, "bold"),
-        text_color=COLOR_TEXTO,
+        font=("Arial", 11, "bold"),
+        text_color="#b0b0b0",
         anchor="w"
-    ).pack(anchor="w", pady=(0, 5))
-
-    entry_razon = ctk.CTkEntry(
-        frame_inputs,
+    )
+    label_razon_social.pack(fill="x", pady=(0, 5))
+    
+    entry_razon_social = ctk.CTkEntry(
+        frame_form,
         placeholder_text="Razón social completa",
-        width=350,
         height=45,
-        font=("Arial", 13),
-        fg_color=COLOR_FONDO,
-        border_color=COLOR_ROJO_PRIMARY,
-        border_width=2,
-        text_color=COLOR_TEXTO
+        border_width=0,
+        corner_radius=10,
+        fg_color="#2d2d2d",
+        text_color="white",
+        placeholder_text_color="#6a6a6a",
+        font=("Arial", 12)
     )
-    entry_razon.pack(pady=(0, 15))
-
-    # RUC
-    ctk.CTkLabel(
-        frame_inputs,
+    entry_razon_social.pack(fill="x", pady=(0, 15))
+    
+    label_ruc = ctk.CTkLabel(
+        frame_form,
         text="RUC (11 dígitos)",
-        font=("Arial", 12, "bold"),
-        text_color=COLOR_TEXTO,
+        font=("Arial", 11, "bold"),
+        text_color="#b0b0b0",
         anchor="w"
-    ).pack(anchor="w", pady=(0, 5))
-
-    entry_ruc = ctk.CTkEntry(
-        frame_inputs,
-        placeholder_text="Ingrese el RUC de 11 dígitos",
-        width=350,
-        height=45,
-        font=("Arial", 13),
-        fg_color=COLOR_FONDO,
-        border_color=COLOR_ROJO_PRIMARY,
-        border_width=2,
-        text_color=COLOR_TEXTO
     )
-    entry_ruc.pack(pady=(0, 20))
-
-    # Función de registro
+    label_ruc.pack(fill="x", pady=(0, 5))
+    
+    entry_ruc = ctk.CTkEntry(
+        frame_form,
+        placeholder_text="20123456789",
+        height=45,
+        border_width=0,
+        corner_radius=10,
+        fg_color="#2d2d2d",
+        text_color="white",
+        placeholder_text_color="#6a6a6a",
+        font=("Arial", 12)
+    )
+    entry_ruc.pack(fill="x", pady=(0, 25))
+    
     def registrar():
-        nombre = entry_nombre.get()
-        razon = entry_razon.get()
-        ruc = entry_ruc.get()
-
+        nombre = entry_nombre.get().strip()
+        razon_social = entry_razon_social.get().strip()
+        ruc = entry_ruc.get().strip()
+        
+        if not nombre or not razon_social or not ruc:
+            messagebox.showerror("Error", "Todos los campos son obligatorios")
+            return
+        
+        if len(ruc) != 11 or not ruc.isdigit():
+            messagebox.showerror("Error", "El RUC debe tener exactamente 11 dígitos numéricos")
+            return
+        
         btn_registrar.configure(text="Registrando...", state="disabled")
-        ventana.update()
-
+        ventana_registro.update()
+        
         try:
-            exito, mensaje = RegistroBL.registrar_empresa(nombre, razon, ruc, 1)
+            exito, mensaje = RegistroBL.registrar_empresa(nombre, razon_social, ruc, id_ubicacion=1)
+            
+            btn_registrar.configure(text="Registrar Empresa", state="normal")
             
             if exito:
-                messagebox.showinfo("✅ Éxito", mensaje, parent=ventana)
-                ventana.destroy()
-                
-                # Volver al login
-                from vista.login import crear_ventana_login
-                ventana_login = crear_ventana_login()
-                ventana_login.mainloop()
+                messagebox.showinfo("✅ Éxito", mensaje)
+                ventana_registro.destroy()
+                volver_al_login_callback()
             else:
-                btn_registrar.configure(text="REGISTRAR EMPRESA", state="normal")
-                messagebox.showerror("❌ Error", mensaje, parent=ventana)
+                messagebox.showerror("❌ Error en registro", mensaje)
+        
         except Exception as e:
-            btn_registrar.configure(text="REGISTRAR EMPRESA", state="normal")
-            messagebox.showerror("❌ Error", f"Error: {str(e)}", parent=ventana)
-
-    # Botón registrar
+            btn_registrar.configure(text="Registrar Empresa", state="normal")
+            messagebox.showerror("❌ Error del Sistema", f"Ocurrió un error inesperado: {str(e)}")
+    
     btn_registrar = ctk.CTkButton(
-        frame_inputs,
-        text="REGISTRAR EMPRESA",
+        frame_form,
+        text="Registrar Empresa",
         command=registrar,
-        width=350,
-        height=50,
-        font=("Arial Black", 14, "bold"),
-        fg_color=COLOR_ROJO_PRIMARY,
-        hover_color=COLOR_ROJO_HOVER,
-        text_color=COLOR_TEXTO,
-        corner_radius=10
+        height=45,
+        corner_radius=10,
+        fg_color="#DC143C",
+        hover_color="#B71C1C",
+        text_color="white",
+        font=("Arial", 13, "bold")
     )
-    btn_registrar.pack(pady=(0, 15))
-
-    # Volver al login
-    def volver_login():
-        ventana.destroy()
-        from vista.login import crear_ventana_login
-        ventana_login = crear_ventana_login()
-        ventana_login.mainloop()
-
-    ctk.CTkButton(
-        frame_inputs,
-        text="← Volver al Login",
-        command=volver_login,
-        width=350,
-        height=40,
-        font=("Arial", 12, "bold"),
+    btn_registrar.pack(fill="x", pady=(0, 15))
+    
+    entry_ruc.bind("<Return>", lambda e: registrar())
+    
+    frame_volver = ctk.CTkFrame(frame_form, fg_color="transparent")
+    frame_volver.pack(fill="x")
+    
+    label_ya_tienes = ctk.CTkLabel(
+        frame_volver,
+        text="¿Ya tienes cuenta?",
+        font=("Arial", 11),
+        text_color="#8a8a8a"
+    )
+    label_ya_tienes.pack(side="left")
+    
+    btn_volver = ctk.CTkButton(
+        frame_volver,
+        text="Iniciar Sesión",
+        command=ventana_registro.destroy,
+        width=100,
+        height=25,
+        corner_radius=5,
         fg_color="transparent",
-        hover_color=COLOR_FONDO,
-        text_color=COLOR_TEXTO_SECUNDARIO,
-        border_width=2,
-        border_color=COLOR_ROJO_PRIMARY,
-        corner_radius=8
-    ).pack()
-
-    # Footer
-    ctk.CTkLabel(
-        ventana,
-        text="© 2024 IRONtomb",
-        font=("Arial", 9),
-        text_color=COLOR_TEXTO_SECUNDARIO
-    ).pack(side="bottom", pady=10)
-
-    return ventana
+        hover_color="#2d2d2d",
+        text_color="#DC143C",
+        font=("Arial", 11, "bold"),
+        border_width=0
+    )
+    btn_volver.pack(side="left", padx=5)
+    
+    ventana_registro.update_idletasks()
+    x = (ventana_registro.winfo_screenwidth() // 2) - (ventana_registro.winfo_width() // 2)
+    y = (ventana_registro.winfo_screenheight() // 2) - (ventana_registro.winfo_height() // 2)
+    ventana_registro.geometry(f"+{x}+{y}")
+    
+    return ventana_registro
