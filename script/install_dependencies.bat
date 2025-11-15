@@ -18,6 +18,6 @@ pip install pillow
 
 echo.
 echo ============================================
-echo   Instalación completada
+echo   Instalacion completada
 echo ============================================
 pause
