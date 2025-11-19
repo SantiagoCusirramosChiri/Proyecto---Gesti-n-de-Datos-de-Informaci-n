@@ -1,1 +1,0 @@
-Sha trabajado con MYSQL y python
