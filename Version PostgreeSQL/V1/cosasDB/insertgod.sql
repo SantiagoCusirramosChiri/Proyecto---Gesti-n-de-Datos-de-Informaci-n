@@ -1,7 +1,41 @@
--- Conectarse a la base de datos (esto se hace fuera del script en PostgreSQL)
--- \c sistema_documentos;
+-- Deshabilitar triggers temporalmente para limpiar
+SET session_replication_role = replica;
 
--- Insertar ubicaciones
+-- Limpiar tablas en orden correcto (respetando foreign keys)
+TRUNCATE TABLE trs_detalle_guia CASCADE;
+TRUNCATE TABLE trs_encabezado_guia CASCADE;
+TRUNCATE TABLE trs_detalle_documento CASCADE;
+TRUNCATE TABLE trs_encabezado_documento CASCADE;
+
+TRUNCATE TABLE mae_producto CASCADE;
+TRUNCATE TABLE mae_vehiculo CASCADE;
+TRUNCATE TABLE mae_conductor CASCADE;
+TRUNCATE TABLE mae_empresa CASCADE;
+TRUNCATE TABLE mae_cliente CASCADE;
+TRUNCATE TABLE mae_identidad CASCADE;
+TRUNCATE TABLE mae_ubicacion CASCADE;
+TRUNCATE TABLE mae_forma_pago CASCADE;
+TRUNCATE TABLE mae_moneda CASCADE;
+
+-- Reactivar triggers
+SET session_replication_role = DEFAULT;
+
+-- Reiniciar secuencias
+ALTER SEQUENCE mae_ubicacion_id_ubicacion_seq RESTART WITH 1;
+ALTER SEQUENCE mae_identidad_id_identidad_seq RESTART WITH 1;
+ALTER SEQUENCE mae_cliente_id_cliente_seq RESTART WITH 1;
+ALTER SEQUENCE mae_empresa_id_empresa_seq RESTART WITH 1;
+ALTER SEQUENCE mae_conductor_id_conductor_seq RESTART WITH 1;
+ALTER SEQUENCE mae_vehiculo_id_vehiculo_seq RESTART WITH 1;
+ALTER SEQUENCE mae_producto_id_producto_seq RESTART WITH 1;
+ALTER SEQUENCE mae_forma_pago_id_forma_pago_seq RESTART WITH 1;
+ALTER SEQUENCE mae_moneda_id_moneda_seq RESTART WITH 1;
+ALTER SEQUENCE trs_encabezado_documento_id_documento_seq RESTART WITH 1;
+ALTER SEQUENCE trs_detalle_documento_id_detalle_seq RESTART WITH 1;
+ALTER SEQUENCE trs_encabezado_guia_id_guia_seq RESTART WITH 1;
+ALTER SEQUENCE trs_detalle_guia_id_detalle_guia_seq RESTART WITH 1;
+
+-- Aquí van tus INSERTs...
 INSERT INTO mae_ubicacion (descripcion) VALUES
 ('Avenida San Martin 507'),
 ('Avenida Bolognesi 312'),

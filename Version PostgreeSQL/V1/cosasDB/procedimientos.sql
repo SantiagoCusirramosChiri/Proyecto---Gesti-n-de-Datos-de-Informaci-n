@@ -1,11 +1,10 @@
--- Conectarse a la base de datos (esto se hace fuera del script en PostgreSQL)
--- \c sistema_documentos;
+-- ============================================
+-- PROCEDIMIENTOS ALMACENADOS CORREGIDOS
+-- Sistema de Documentos
+-- ============================================
 
--- Procedures
+-- LOGIN Y REGISTRO
 
--- Autenticación
-
-DROP FUNCTION IF EXISTS sp_login_empresa(VARCHAR, CHAR);
 CREATE OR REPLACE FUNCTION sp_login_empresa(
     p_usuario VARCHAR(50), 
     p_clave CHAR(11)
@@ -13,31 +12,44 @@ CREATE OR REPLACE FUNCTION sp_login_empresa(
 RETURNS TABLE(
     mensaje TEXT,
     id_empresa INTEGER,
-    nombre VARCHAR(50),
-    razon_social VARCHAR(100)
+    nombre_empresa VARCHAR(50),
+    razon_social_empresa VARCHAR(100)
 ) AS $$
 DECLARE
-    v_existe INTEGER := 0;
+    v_empresa_existe INTEGER := 0;
+    v_empresa_record RECORD;
 BEGIN
-    SELECT COUNT(*) INTO v_existe 
-    FROM mae_empresa 
-    WHERE nombre = p_usuario 
-      AND RUC = p_clave 
-      AND activo = TRUE;
+    -- Verificar si la empresa existe y está activa
+    SELECT COUNT(*) INTO v_empresa_existe 
+    FROM mae_empresa emp
+    WHERE emp.nombre = sp_login_empresa.p_usuario 
+    AND emp.RUC = sp_login_empresa.p_clave 
+    AND emp.activo = TRUE;
     
-    IF v_existe > 0 THEN
+    IF v_empresa_existe > 0 THEN
+        -- Obtener los datos completos de la empresa
+        SELECT 
+            emp.id_empresa,
+            emp.nombre,
+            emp.razon_social
+        INTO v_empresa_record
+        FROM mae_empresa emp
+        WHERE emp.nombre = sp_login_empresa.p_usuario 
+        AND emp.RUC = sp_login_empresa.p_clave;
+        
         RETURN QUERY 
-        SELECT 'LOGIN EXITOSO'::TEXT AS mensaje, 
-               id_empresa, 
-               nombre, 
-               razon_social 
-        FROM mae_empresa 
-        WHERE nombre = p_usuario 
-          AND RUC = p_clave;
+        SELECT 
+            'LOGIN EXITOSO'::TEXT, 
+            v_empresa_record.id_empresa, 
+            v_empresa_record.nombre, 
+            v_empresa_record.razon_social;
     ELSE
         RETURN QUERY 
-        SELECT 'USUARIO O CONTRASEÑA INCORRECTA O EMPRESA INACTIVA'::TEXT AS mensaje,
-               NULL::INTEGER, NULL::VARCHAR(50), NULL::VARCHAR(100);
+        SELECT 
+            'USUARIO O CONTRASEÑA INCORRECTA O EMPRESA INACTIVA'::TEXT,
+            NULL::INTEGER, 
+            NULL::VARCHAR(50), 
+            NULL::VARCHAR(100);
     END IF;
 END;
 $$ LANGUAGE plpgsql;
@@ -56,20 +68,35 @@ DECLARE
     v_id_nombre INTEGER := NULL;
     v_nombre_existente VARCHAR(50);
     v_new_id INTEGER;
+    v_ubicacion_existe INTEGER := 0;
 BEGIN
-    SELECT id_empresa, activo, nombre 
+    -- Validar que la ubicación existe
+    SELECT COUNT(*) INTO v_ubicacion_existe
+    FROM mae_ubicacion
+    WHERE id_ubicacion = sp_registrar_empresa.p_id_ubicacion
+    AND activo = TRUE;
+    
+    IF v_ubicacion_existe = 0 THEN
+        RETURN QUERY SELECT 'ERROR: LA UBICACIÓN SELECCIONADA NO EXISTE O ESTÁ INACTIVA'::TEXT, NULL::INTEGER;
+        RETURN;
+    END IF;
+    
+    -- Verificar si el RUC ya existe
+    SELECT emp.id_empresa, emp.activo, emp.nombre 
     INTO v_id_ruc, v_activo_ruc, v_nombre_existente 
-    FROM mae_empresa 
-    WHERE RUC = p_ruc 
+    FROM mae_empresa emp
+    WHERE emp.RUC = sp_registrar_empresa.p_ruc 
     LIMIT 1;
     
-    SELECT id_empresa 
+    -- Verificar si el nombre ya existe con otro RUC
+    SELECT emp.id_empresa 
     INTO v_id_nombre 
-    FROM mae_empresa 
-    WHERE nombre = p_nombre 
-      AND RUC != p_ruc 
+    FROM mae_empresa emp
+    WHERE emp.nombre = sp_registrar_empresa.p_nombre 
+    AND emp.RUC != sp_registrar_empresa.p_ruc 
     LIMIT 1;
     
+    -- CASO 1: Nueva empresa (ni RUC ni nombre existen)
     IF v_id_ruc IS NULL AND v_id_nombre IS NULL THEN
         INSERT INTO mae_empresa(
             nombre, 
@@ -79,37 +106,43 @@ BEGIN
             activo
         ) 
         VALUES (
-            p_nombre, 
-            p_razon_social, 
-            p_ruc, 
-            p_id_ubicacion, 
+            sp_registrar_empresa.p_nombre, 
+            sp_registrar_empresa.p_razon_social, 
+            sp_registrar_empresa.p_ruc, 
+            sp_registrar_empresa.p_id_ubicacion, 
             TRUE
         )
-        RETURNING id_empresa INTO v_new_id;
+        RETURNING mae_empresa.id_empresa INTO v_new_id;
         
         RETURN QUERY SELECT 'EMPRESA CREADA'::TEXT, v_new_id;
         RETURN;
     END IF;
     
+    -- CASO 2: El nombre ya existe con otro RUC
     IF v_id_nombre IS NOT NULL THEN
         RETURN QUERY SELECT 'ERROR: NOMBRE DE EMPRESA YA USADO CON OTRO RUC'::TEXT, NULL::INTEGER;
         RETURN;
     END IF;
     
+    -- CASO 3: El RUC ya existe
     IF v_id_ruc IS NOT NULL THEN
-        IF v_nombre_existente = p_nombre THEN
+        IF v_nombre_existente = sp_registrar_empresa.p_nombre THEN
+            -- Mismo RUC y mismo nombre
             IF v_activo_ruc = FALSE THEN
+                -- Reactivar empresa inactiva
                 UPDATE mae_empresa 
                 SET activo = TRUE, 
-                    razon_social = p_razon_social, 
-                    id_ubicacion = p_id_ubicacion 
+                    razon_social = sp_registrar_empresa.p_razon_social, 
+                    id_ubicacion = sp_registrar_empresa.p_id_ubicacion 
                 WHERE id_empresa = v_id_ruc;
                 
                 RETURN QUERY SELECT 'EMPRESA REACTIVADA'::TEXT, v_id_ruc;
             ELSE
+                -- Empresa ya activa
                 RETURN QUERY SELECT 'EMPRESA YA EXISTE (ACTIVA)'::TEXT, v_id_ruc;
             END IF;
         ELSE
+            -- Mismo RUC pero diferente nombre
             RETURN QUERY SELECT CONCAT('ERROR: RUC YA REGISTRADO CON EL NOMBRE "', v_nombre_existente, '"')::TEXT, NULL::INTEGER;
         END IF;
         RETURN;
@@ -117,7 +150,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Listado
+-- LISTADO
 
 DROP FUNCTION IF EXISTS sp_listar_guias_empresa(INTEGER);
 CREATE OR REPLACE FUNCTION sp_listar_guias_empresa(p_id_empresa INTEGER)
@@ -136,20 +169,20 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY 
     SELECT g.id_guia, 
-           g.nro_guia, 
-           g.fecha_emision, 
-           g.fecha_inicio_traslado, 
-           g.motivo_traslado, 
-           g.direccion_partida, 
-           g.direccion_llegada, 
-           c.nombre::VARCHAR(50) AS conductor, 
-           v.placa::CHAR(8) AS vehiculo, 
-           g.estado_guia
+        g.nro_guia, 
+        g.fecha_emision, 
+        g.fecha_inicio_traslado, 
+        g.motivo_traslado, 
+        g.direccion_partida, 
+        g.direccion_llegada, 
+        c.nombre::VARCHAR(50) AS conductor, 
+        v.placa::CHAR(8) AS vehiculo, 
+        g.estado_guia
     FROM trs_encabezado_guia g 
     JOIN trs_encabezado_documento d ON g.id_doc_venta = d.id_documento 
     JOIN mae_conductor c ON g.id_conductor = c.id_conductor 
     JOIN mae_vehiculo v ON g.id_vehiculo = v.id_vehiculo
-    WHERE d.id_empresa = p_id_empresa 
+    WHERE d.id_empresa = sp_listar_guias_empresa.p_id_empresa 
     ORDER BY g.fecha_emision DESC;
 END;
 $$ LANGUAGE plpgsql;
@@ -166,16 +199,16 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY 
     SELECT g.id_guia, 
-           g.nro_guia, 
-           g.fecha_inicio_traslado, 
-           c.nombre::VARCHAR(50) AS conductor, 
-           v.placa::CHAR(8) AS vehiculo
+        g.nro_guia, 
+        g.fecha_inicio_traslado, 
+        c.nombre::VARCHAR(50) AS conductor, 
+        v.placa::CHAR(8) AS vehiculo
     FROM trs_encabezado_guia g 
     JOIN trs_encabezado_documento d ON g.id_doc_venta = d.id_documento 
     JOIN mae_conductor c ON g.id_conductor = c.id_conductor 
     JOIN mae_vehiculo v ON g.id_vehiculo = v.id_vehiculo
-    WHERE d.id_empresa = p_id_empresa 
-      AND g.estado_guia = 'PENDIENTE' 
+    WHERE d.id_empresa = sp_listar_guias_pendientes_empresa.p_id_empresa 
+    AND g.estado_guia = 'PENDIENTE' 
     ORDER BY g.fecha_inicio_traslado ASC;
 END;
 $$ LANGUAGE plpgsql;
@@ -192,14 +225,14 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY 
     SELECT d.id_documento, 
-           p.nombre::VARCHAR(50) AS producto, 
-           dt.cantidad, 
-           p.precio_base AS precio_producto, 
-           dt.importe
+        p.nombre::VARCHAR(50) AS producto, 
+        dt.cantidad, 
+        p.precio_base AS precio_producto, 
+        dt.importe
     FROM trs_detalle_documento dt 
     JOIN trs_encabezado_documento d ON dt.id_documento = d.id_documento 
     JOIN mae_producto p ON dt.id_producto = p.id_producto
-    WHERE d.id_empresa = p_id_empresa 
+    WHERE d.id_empresa = sp_detalle_productos_empresa.p_id_empresa 
     ORDER BY d.fecha_emision DESC;
 END;
 $$ LANGUAGE plpgsql;
@@ -217,18 +250,18 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY 
     SELECT DISTINCT 
-           c.id_cliente, 
-           c.nombre, 
-           c.apellido, 
-           u.descripcion::VARCHAR(100) AS ubicacion, 
-           i.tipo_identificacion, 
-           i.codigo_documento
+        c.id_cliente, 
+        c.nombre, 
+        c.apellido, 
+        u.descripcion::VARCHAR(100) AS ubicacion, 
+        i.tipo_identificacion, 
+        i.codigo_documento
     FROM mae_cliente c 
     JOIN mae_ubicacion u ON c.id_ubicacion = u.id_ubicacion 
     JOIN mae_identidad i ON c.id_identidad = i.id_identidad 
     JOIN trs_encabezado_documento d ON c.id_cliente = d.id_cliente
-    WHERE d.id_empresa = p_id_empresa 
-      AND c.activo = TRUE 
+    WHERE d.id_empresa = sp_listar_clientes_empresa.p_id_empresa 
+    AND c.activo = TRUE 
     ORDER BY c.nombre, c.apellido;
 END;
 $$ LANGUAGE plpgsql;
@@ -245,17 +278,17 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY 
     SELECT p.id_producto, 
-           p.nombre, 
-           p.descripcion, 
-           p.stock, 
-           p.unidad_medida 
+        p.nombre, 
+        p.descripcion, 
+        p.stock, 
+        p.unidad_medida 
     FROM mae_producto p 
     WHERE p.activo = TRUE 
     ORDER BY p.nombre ASC;
 END;
 $$ LANGUAGE plpgsql;
 
--- Inserción - Maestras
+-- INSERCIÓN - MAESTRAS
 
 DROP FUNCTION IF EXISTS sp_insertar_ubicacion(VARCHAR);
 CREATE OR REPLACE FUNCTION sp_insertar_ubicacion(p_descripcion VARCHAR(100))
@@ -264,7 +297,7 @@ DECLARE
     v_id INTEGER;
 BEGIN
     INSERT INTO mae_ubicacion(descripcion) 
-    VALUES (p_descripcion)
+    VALUES (sp_insertar_ubicacion.p_descripcion)
     RETURNING mae_ubicacion.id_ubicacion INTO v_id;
     
     RETURN QUERY SELECT v_id;
@@ -275,60 +308,83 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP FUNCTION IF EXISTS sp_insertar_identidad(VARCHAR, VARCHAR);
+
 CREATE OR REPLACE FUNCTION sp_insertar_identidad(
-    p_tipo_identificacion VARCHAR(20), 
+    p_tipo_identificacion VARCHAR(20),
     p_codigo_documento VARCHAR(15)
 )
-RETURNS TABLE(id_identidad INTEGER) AS $$
+RETURNS TABLE(
+    success BOOLEAN,
+    message VARCHAR(255),
+    id_identidad INTEGER
+) AS $$
 DECLARE
-    v_id INTEGER;
+    v_id_identidad INTEGER;
+    v_existe BOOLEAN;
 BEGIN
-    INSERT INTO mae_identidad(
-        tipo_identificacion, 
-        codigo_documento
-    ) 
-    VALUES (
-        p_tipo_identificacion, 
-        p_codigo_documento
-    )
-    RETURNING mae_identidad.id_identidad INTO v_id;
-    
-    RETURN QUERY SELECT v_id;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE EXCEPTION 'Error al insertar identidad: %', SQLERRM;
-END;
-$$ LANGUAGE plpgsql;
+    -- Validar que los campos no estén vacíos
+    IF TRIM(p_tipo_identificacion) = '' OR p_codigo_documento IS NULL THEN
+        RETURN QUERY SELECT FALSE, 'Tipo de identificación y código son requeridos'::VARCHAR(255), NULL::INTEGER;
+        RETURN;
+    END IF;
 
-DROP FUNCTION IF EXISTS sp_insertar_cliente(VARCHAR, VARCHAR, INTEGER, INTEGER);
-CREATE OR REPLACE FUNCTION sp_insertar_cliente(
-    p_nombre VARCHAR(50), 
-    p_apellido VARCHAR(50), 
-    p_id_ubicacion INTEGER, 
-    p_id_identidad INTEGER
-)
-RETURNS TABLE(id_cliente INTEGER) AS $$
-DECLARE
-    v_id INTEGER;
-BEGIN
-    INSERT INTO mae_cliente(
-        nombre, 
-        apellido, 
-        id_ubicacion, 
-        id_identidad
-    ) 
-    VALUES (
-        p_nombre, 
-        p_apellido, 
-        p_id_ubicacion, 
-        p_id_identidad
-    )
-    RETURNING mae_cliente.id_cliente INTO v_id;
+    -- Normalizar código (quitar espacios)
+    p_codigo_documento := TRIM(p_codigo_documento);
+
+    -- Validaciones según tipo de documento
+    CASE UPPER(p_tipo_identificacion)
+        WHEN 'DNI' THEN
+            IF p_codigo_documento !~ '^\d{8}$' THEN
+                RETURN QUERY SELECT FALSE, 'DNI debe tener exactamente 8 dígitos numéricos'::VARCHAR(255), NULL::INTEGER;
+                RETURN;
+            END IF;
+            
+        WHEN 'RUC' THEN
+            IF p_codigo_documento !~ '^\d{11}$' THEN
+                RETURN QUERY SELECT FALSE, 'RUC debe tener exactamente 11 dígitos numéricos'::VARCHAR(255), NULL::INTEGER;
+                RETURN;
+            END IF;
+            
+        WHEN 'CE' THEN
+            IF p_codigo_documento !~ '^\d{9}$' THEN
+                RETURN QUERY SELECT FALSE, 'CE debe tener exactamente 9 dígitos numéricos'::VARCHAR(255), NULL::INTEGER;
+                RETURN;
+            END IF;
+            
+        WHEN 'PASAPORTE' THEN
+            IF LENGTH(p_codigo_documento) < 6 OR LENGTH(p_codigo_documento) > 12 THEN
+                RETURN QUERY SELECT FALSE, 'Pasaporte debe tener entre 6 y 12 caracteres'::VARCHAR(255), NULL::INTEGER;
+                RETURN;
+            END IF;
+            
+        ELSE
+            RETURN QUERY SELECT FALSE, 'Tipo de identificación debe ser DNI, RUC, CE o PASAPORTE'::VARCHAR(255), NULL::INTEGER;
+            RETURN;
+    END CASE;
+
+    -- Validar unicidad del código_documento
+    SELECT EXISTS(
+        SELECT 1 FROM mae_identidad 
+        WHERE codigo_documento = p_codigo_documento 
+        AND activo = TRUE
+    ) INTO v_existe;
     
-    RETURN QUERY SELECT v_id;
+    IF v_existe THEN
+        RETURN QUERY SELECT FALSE, 'El documento ya está registrado'::VARCHAR(255), NULL::INTEGER;
+        RETURN;
+    END IF;
+
+    -- ✅ CORREGIDO: Usar mae_identidad.id_identidad en lugar de solo id_identidad
+    INSERT INTO mae_identidad (tipo_identificacion, codigo_documento)
+    VALUES (UPPER(p_tipo_identificacion), p_codigo_documento)
+    RETURNING mae_identidad.id_identidad INTO v_id_identidad;
+
+    -- Retornar éxito
+    RETURN QUERY SELECT TRUE, 'Identidad registrada exitosamente'::VARCHAR(255), v_id_identidad;
+    
 EXCEPTION
     WHEN OTHERS THEN
-        RAISE EXCEPTION 'Error al insertar cliente: %', SQLERRM;
+        RETURN QUERY SELECT FALSE, ('Error al registrar: ' || SQLERRM)::VARCHAR(255), NULL::INTEGER;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -350,10 +406,10 @@ BEGIN
         id_ubicacion
     ) 
     VALUES (
-        p_nombre, 
-        p_razon_social, 
-        p_RUC, 
-        p_id_ubicacion
+        sp_insertar_empresa.p_nombre, 
+        sp_insertar_empresa.p_razon_social, 
+        sp_insertar_empresa.p_RUC, 
+        sp_insertar_empresa.p_id_ubicacion
     )
     RETURNING mae_empresa.id_empresa INTO v_id;
     
@@ -378,8 +434,8 @@ BEGIN
         n_licencia
     ) 
     VALUES (
-        p_nombre, 
-        p_n_licencia
+        sp_insertar_conductor.p_nombre, 
+        sp_insertar_conductor.p_n_licencia
     )
     RETURNING mae_conductor.id_conductor INTO v_id;
     
@@ -404,8 +460,8 @@ BEGIN
         placa
     ) 
     VALUES (
-        p_descripcion, 
-        p_placa
+        sp_insertar_vehiculo.p_descripcion, 
+        sp_insertar_vehiculo.p_placa
     )
     RETURNING mae_vehiculo.id_vehiculo INTO v_id;
     
@@ -436,11 +492,11 @@ BEGIN
         unidad_medida
     ) 
     VALUES (
-        p_nombre, 
-        p_descripcion, 
-        p_precio_base, 
-        p_stock, 
-        p_unidad_medida
+        sp_insertar_producto.p_nombre, 
+        sp_insertar_producto.p_descripcion, 
+        sp_insertar_producto.p_precio_base, 
+        sp_insertar_producto.p_stock, 
+        sp_insertar_producto.p_unidad_medida
     )
     RETURNING mae_producto.id_producto INTO v_id;
     
@@ -465,8 +521,8 @@ BEGIN
         descripcion
     ) 
     VALUES (
-        p_nombre, 
-        p_descripcion
+        sp_insertar_forma_pago.p_nombre, 
+        sp_insertar_forma_pago.p_descripcion
     )
     RETURNING mae_forma_pago.id_forma_pago INTO v_id;
     
@@ -491,8 +547,8 @@ BEGIN
         nombre
     ) 
     VALUES (
-        p_codigo_iso, 
-        p_nombre
+        sp_insertar_moneda.p_codigo_iso, 
+        sp_insertar_moneda.p_nombre
     )
     RETURNING mae_moneda.id_moneda INTO v_id;
     
@@ -503,7 +559,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- Inserción - Transaccional
+-- INSERCIÓN - TRANSACCIONAL
 
 DROP FUNCTION IF EXISTS sp_insertar_encabezado_documento(VARCHAR, DATE, INTEGER, INTEGER, INTEGER, INTEGER);
 CREATE OR REPLACE FUNCTION sp_insertar_encabezado_documento(
@@ -527,12 +583,12 @@ BEGIN
         id_moneda
     ) 
     VALUES (
-        p_tipo_doc, 
-        p_fecha_emision, 
-        p_id_empresa, 
-        p_id_cliente, 
-        p_id_forma_pago, 
-        p_id_moneda
+        sp_insertar_encabezado_documento.p_tipo_doc, 
+        sp_insertar_encabezado_documento.p_fecha_emision, 
+        sp_insertar_encabezado_documento.p_id_empresa, 
+        sp_insertar_encabezado_documento.p_id_cliente, 
+        sp_insertar_encabezado_documento.p_id_forma_pago, 
+        sp_insertar_encabezado_documento.p_id_moneda
     )
     RETURNING trs_encabezado_documento.id_documento INTO v_id;
     
@@ -565,12 +621,12 @@ BEGIN
         importe
     ) 
     VALUES (
-        p_id_documento, 
-        p_id_producto, 
-        p_cantidad, 
-        p_subtotal, 
-        p_igv, 
-        p_importe
+        sp_insertar_detalle_documento.p_id_documento, 
+        sp_insertar_detalle_documento.p_id_producto, 
+        sp_insertar_detalle_documento.p_cantidad, 
+        sp_insertar_detalle_documento.p_subtotal, 
+        sp_insertar_detalle_documento.p_igv, 
+        sp_insertar_detalle_documento.p_importe
     )
     RETURNING trs_detalle_documento.id_detalle INTO v_id;
     
@@ -609,15 +665,15 @@ BEGIN
         id_vehiculo
     ) 
     VALUES (
-        p_id_doc_venta, 
-        p_nro_guia, 
-        p_fecha_emision, 
-        p_fecha_inicio_traslado, 
-        p_motivo_traslado, 
-        p_direccion_partida, 
-        p_direccion_llegada, 
-        p_id_conductor, 
-        p_id_vehiculo
+        sp_insertar_encabezado_guia.p_id_doc_venta, 
+        sp_insertar_encabezado_guia.p_nro_guia, 
+        sp_insertar_encabezado_guia.p_fecha_emision, 
+        sp_insertar_encabezado_guia.p_fecha_inicio_traslado, 
+        sp_insertar_encabezado_guia.p_motivo_traslado, 
+        sp_insertar_encabezado_guia.p_direccion_partida, 
+        sp_insertar_encabezado_guia.p_direccion_llegada, 
+        sp_insertar_encabezado_guia.p_id_conductor, 
+        sp_insertar_encabezado_guia.p_id_vehiculo
     )
     RETURNING trs_encabezado_guia.id_guia INTO v_id;
     
@@ -664,19 +720,19 @@ BEGIN
         id_vehiculo
     ) 
     VALUES (
-        p_id_guia, 
-        p_id_producto, 
-        p_descripcion, 
-        p_unidad_medida, 
-        p_unidad_peso_bruto, 
-        p_peso_total_carga, 
-        p_modalidad_trans, 
-        p_transbordo_prog, 
-        p_categoriaM1_L, 
-        p_retorno_envases, 
-        p_vehiculo_vacio, 
-        p_id_conductor, 
-        p_id_vehiculo
+        sp_insertar_detalle_guia.p_id_guia, 
+        sp_insertar_detalle_guia.p_id_producto, 
+        sp_insertar_detalle_guia.p_descripcion, 
+        sp_insertar_detalle_guia.p_unidad_medida, 
+        sp_insertar_detalle_guia.p_unidad_peso_bruto, 
+        sp_insertar_detalle_guia.p_peso_total_carga, 
+        sp_insertar_detalle_guia.p_modalidad_trans, 
+        sp_insertar_detalle_guia.p_transbordo_prog, 
+        sp_insertar_detalle_guia.p_categoriaM1_L, 
+        sp_insertar_detalle_guia.p_retorno_envases, 
+        sp_insertar_detalle_guia.p_vehiculo_vacio, 
+        sp_insertar_detalle_guia.p_id_conductor, 
+        sp_insertar_detalle_guia.p_id_vehiculo
     )
     RETURNING trs_detalle_guia.id_detalle_guia INTO v_id;
     
@@ -687,7 +743,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- CRUD - Conductores
+-- CRUD - CONDUCTORES
 
 DROP FUNCTION IF EXISTS sp_obtener_conductores_activos();
 CREATE OR REPLACE FUNCTION sp_obtener_conductores_activos()
@@ -699,13 +755,13 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_conductor, 
-           nombre, 
-           n_licencia, 
-           activo 
-    FROM mae_conductor 
-    WHERE activo = TRUE 
-    ORDER BY nombre;
+    SELECT c.id_conductor, 
+        c.nombre, 
+        c.n_licencia, 
+        c.activo 
+    FROM mae_conductor c
+    WHERE c.activo = TRUE 
+    ORDER BY c.nombre;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -718,10 +774,10 @@ CREATE OR REPLACE FUNCTION sp_actualizar_conductor(
 RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_conductor 
-    SET nombre = p_nombre, 
-        n_licencia = p_n_licencia, 
+    SET nombre = sp_actualizar_conductor.p_nombre, 
+        n_licencia = sp_actualizar_conductor.p_n_licencia, 
         activo = TRUE 
-    WHERE id_conductor = p_id_conductor;
+    WHERE id_conductor = sp_actualizar_conductor.p_id_conductor;
     
     RETURN QUERY SELECT 'Conductor actualizado exitosamente'::TEXT;
 EXCEPTION
@@ -736,7 +792,7 @@ RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_conductor 
     SET activo = FALSE 
-    WHERE id_conductor = p_id_conductor;
+    WHERE id_conductor = sp_desactivar_conductor.p_id_conductor;
     
     RETURN QUERY SELECT 'Conductor desactivado exitosamente'::TEXT;
 EXCEPTION
@@ -745,7 +801,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- CRUD - Vehículos
+-- CRUD - VEHÍCULOS
 
 DROP FUNCTION IF EXISTS sp_obtener_vehiculos_activos();
 CREATE OR REPLACE FUNCTION sp_obtener_vehiculos_activos()
@@ -757,13 +813,13 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_vehiculo, 
-           descripcion, 
-           placa, 
-           activo 
-    FROM mae_vehiculo 
-    WHERE activo = TRUE 
-    ORDER BY descripcion;
+    SELECT v.id_vehiculo, 
+        v.descripcion, 
+        v.placa, 
+        v.activo 
+    FROM mae_vehiculo v
+    WHERE v.activo = TRUE 
+    ORDER BY v.descripcion;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -776,10 +832,10 @@ CREATE OR REPLACE FUNCTION sp_actualizar_vehiculo(
 RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_vehiculo 
-    SET descripcion = p_descripcion, 
-        placa = p_placa, 
+    SET descripcion = sp_actualizar_vehiculo.p_descripcion, 
+        placa = sp_actualizar_vehiculo.p_placa, 
         activo = TRUE 
-    WHERE id_vehiculo = p_id_vehiculo;
+    WHERE id_vehiculo = sp_actualizar_vehiculo.p_id_vehiculo;
     
     RETURN QUERY SELECT 'Vehículo actualizado exitosamente'::TEXT;
 EXCEPTION
@@ -794,7 +850,7 @@ RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_vehiculo 
     SET activo = FALSE 
-    WHERE id_vehiculo = p_id_vehiculo;
+    WHERE id_vehiculo = sp_desactivar_vehiculo.p_id_vehiculo;
     
     RETURN QUERY SELECT 'Vehículo desactivado exitosamente'::TEXT;
 EXCEPTION
@@ -803,7 +859,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- CRUD - Formas de pago
+-- CRUD - FORMAS DE PAGO
 
 DROP FUNCTION IF EXISTS sp_obtener_formas_pago_activas();
 CREATE OR REPLACE FUNCTION sp_obtener_formas_pago_activas()
@@ -815,13 +871,13 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_forma_pago, 
-           nombre, 
-           descripcion, 
-           activo 
-    FROM mae_forma_pago 
-    WHERE activo = TRUE 
-    ORDER BY nombre;
+    SELECT fp.id_forma_pago, 
+        fp.nombre, 
+        fp.descripcion, 
+        fp.activo 
+    FROM mae_forma_pago fp
+    WHERE fp.activo = TRUE 
+    ORDER BY fp.nombre;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -834,10 +890,10 @@ CREATE OR REPLACE FUNCTION sp_actualizar_forma_pago(
 RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_forma_pago 
-    SET nombre = p_nombre, 
-        descripcion = p_descripcion, 
+    SET nombre = sp_actualizar_forma_pago.p_nombre, 
+        descripcion = sp_actualizar_forma_pago.p_descripcion, 
         activo = TRUE 
-    WHERE id_forma_pago = p_id_forma_pago;
+    WHERE id_forma_pago = sp_actualizar_forma_pago.p_id_forma_pago;
     
     RETURN QUERY SELECT 'Forma de pago actualizada exitosamente'::TEXT;
 EXCEPTION
@@ -852,7 +908,7 @@ RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_forma_pago 
     SET activo = FALSE 
-    WHERE id_forma_pago = p_id_forma_pago;
+    WHERE id_forma_pago = sp_desactivar_forma_pago.p_id_forma_pago;
     
     RETURN QUERY SELECT 'Forma de pago desactivada exitosamente'::TEXT;
 EXCEPTION
@@ -861,7 +917,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- CRUD - Monedas
+-- CRUD - MONEDAS
 
 DROP FUNCTION IF EXISTS sp_obtener_monedas_activas();
 CREATE OR REPLACE FUNCTION sp_obtener_monedas_activas()
@@ -873,13 +929,13 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_moneda, 
-           codigo_iso, 
-           nombre, 
-           activo 
-    FROM mae_moneda 
-    WHERE activo = TRUE 
-    ORDER BY nombre;
+    SELECT m.id_moneda, 
+        m.codigo_iso, 
+        m.nombre, 
+        m.activo 
+    FROM mae_moneda m
+    WHERE m.activo = TRUE 
+    ORDER BY m.nombre;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -892,10 +948,10 @@ CREATE OR REPLACE FUNCTION sp_actualizar_moneda(
 RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_moneda 
-    SET codigo_iso = p_codigo_iso, 
-        nombre = p_nombre, 
+    SET codigo_iso = sp_actualizar_moneda.p_codigo_iso, 
+        nombre = sp_actualizar_moneda.p_nombre, 
         activo = TRUE 
-    WHERE id_moneda = p_id_moneda;
+    WHERE id_moneda = sp_actualizar_moneda.p_id_moneda;
     
     RETURN QUERY SELECT 'Moneda actualizada exitosamente'::TEXT;
 EXCEPTION
@@ -910,7 +966,7 @@ RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_moneda 
     SET activo = FALSE 
-    WHERE id_moneda = p_id_moneda;
+    WHERE id_moneda = sp_desactivar_moneda.p_id_moneda;
     
     RETURN QUERY SELECT 'Moneda desactivada exitosamente'::TEXT;
 EXCEPTION
@@ -919,7 +975,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- CRUD - Ubicaciones
+-- CRUD - UBICACIONES
 
 DROP FUNCTION IF EXISTS sp_obtener_ubicaciones_activas();
 CREATE OR REPLACE FUNCTION sp_obtener_ubicaciones_activas()
@@ -930,12 +986,12 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_ubicacion, 
-           descripcion, 
-           activo 
-    FROM mae_ubicacion 
-    WHERE activo = TRUE 
-    ORDER BY descripcion;
+    SELECT u.id_ubicacion, 
+        u.descripcion, 
+        u.activo 
+    FROM mae_ubicacion u
+    WHERE u.activo = TRUE 
+    ORDER BY u.descripcion;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -947,9 +1003,9 @@ CREATE OR REPLACE FUNCTION sp_actualizar_ubicacion(
 RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_ubicacion 
-    SET descripcion = p_descripcion, 
+    SET descripcion = sp_actualizar_ubicacion.p_descripcion, 
         activo = TRUE 
-    WHERE id_ubicacion = p_id_ubicacion;
+    WHERE id_ubicacion = sp_actualizar_ubicacion.p_id_ubicacion;
     
     RETURN QUERY SELECT 'Ubicación actualizada exitosamente'::TEXT;
 EXCEPTION
@@ -964,7 +1020,7 @@ RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_ubicacion 
     SET activo = FALSE 
-    WHERE id_ubicacion = p_id_ubicacion;
+    WHERE id_ubicacion = sp_desactivar_ubicacion.p_id_ubicacion;
     
     RETURN QUERY SELECT 'Ubicación desactivada exitosamente'::TEXT;
 EXCEPTION
@@ -973,7 +1029,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- CRUD - Identidades
+-- CRUD - IDENTIDADES
 
 DROP FUNCTION IF EXISTS sp_obtener_identidades_activas();
 CREATE OR REPLACE FUNCTION sp_obtener_identidades_activas()
@@ -985,13 +1041,13 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_identidad, 
-           tipo_identificacion, 
-           codigo_documento, 
-           activo 
-    FROM mae_identidad 
-    WHERE activo = TRUE 
-    ORDER BY tipo_identificacion, codigo_documento;
+    SELECT i.id_identidad, 
+        i.tipo_identificacion, 
+        i.codigo_documento, 
+        i.activo 
+    FROM mae_identidad i
+    WHERE i.activo = TRUE 
+    ORDER BY i.tipo_identificacion, i.codigo_documento;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1004,10 +1060,10 @@ CREATE OR REPLACE FUNCTION sp_actualizar_identidad(
 RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_identidad 
-    SET tipo_identificacion = p_tipo_identificacion, 
-        codigo_documento = p_codigo_documento, 
+    SET tipo_identificacion = sp_actualizar_identidad.p_tipo_identificacion, 
+        codigo_documento = sp_actualizar_identidad.p_codigo_documento, 
         activo = TRUE 
-    WHERE id_identidad = p_id_identidad;
+    WHERE id_identidad = sp_actualizar_identidad.p_id_identidad;
     
     RETURN QUERY SELECT 'Identidad actualizada exitosamente'::TEXT;
 EXCEPTION
@@ -1022,7 +1078,7 @@ RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_identidad 
     SET activo = FALSE 
-    WHERE id_identidad = p_id_identidad;
+    WHERE id_identidad = sp_desactivar_identidad.p_id_identidad;
     
     RETURN QUERY SELECT 'Identidad desactivada exitosamente'::TEXT;
 EXCEPTION
@@ -1031,7 +1087,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- CRUD - Clientes
+-- CRUD - CLIENTES
 
 DROP FUNCTION IF EXISTS sp_obtener_clientes_activos();
 CREATE OR REPLACE FUNCTION sp_obtener_clientes_activos()
@@ -1049,15 +1105,15 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY 
     SELECT c.id_cliente, 
-           c.nombre, 
-           c.apellido, 
-           u.descripcion::VARCHAR(100) AS ubicacion, 
-           i.tipo_identificacion, 
-           i.codigo_documento, 
-           c.activo, 
-           c.id_ubicacion, 
-           c.id_identidad
-    FROM mae_cliente c 
+        c.nombre, 
+        c.apellido, 
+        u.descripcion::VARCHAR(100) AS ubicacion, 
+        i.tipo_identificacion, 
+        i.codigo_documento, 
+        c.activo, 
+        c.id_ubicacion, 
+        c.id_identidad
+    FROM mae_cliente c
     JOIN mae_ubicacion u ON c.id_ubicacion = u.id_ubicacion 
     JOIN mae_identidad i ON c.id_identidad = i.id_identidad 
     WHERE c.activo = TRUE 
@@ -1076,12 +1132,12 @@ CREATE OR REPLACE FUNCTION sp_actualizar_cliente(
 RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_cliente 
-    SET nombre = p_nombre, 
-        apellido = p_apellido, 
-        id_ubicacion = p_id_ubicacion, 
-        id_identidad = p_id_identidad, 
+    SET nombre = sp_actualizar_cliente.p_nombre, 
+        apellido = sp_actualizar_cliente.p_apellido, 
+        id_ubicacion = sp_actualizar_cliente.p_id_ubicacion, 
+        id_identidad = sp_actualizar_cliente.p_id_identidad, 
         activo = TRUE 
-    WHERE id_cliente = p_id_cliente;
+    WHERE id_cliente = sp_actualizar_cliente.p_id_cliente;
     
     RETURN QUERY SELECT 'Cliente actualizado exitosamente'::TEXT;
 EXCEPTION
@@ -1096,7 +1152,7 @@ RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_cliente 
     SET activo = FALSE 
-    WHERE id_cliente = p_id_cliente;
+    WHERE id_cliente = sp_desactivar_cliente.p_id_cliente;
     
     RETURN QUERY SELECT 'Cliente desactivado exitosamente'::TEXT;
 EXCEPTION
@@ -1105,7 +1161,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- CRUD - Productos
+-- CRUD - PRODUCTOS
 
 DROP FUNCTION IF EXISTS sp_obtener_productos_activos();
 CREATE OR REPLACE FUNCTION sp_obtener_productos_activos()
@@ -1120,16 +1176,16 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_producto, 
-           nombre, 
-           descripcion, 
-           precio_base, 
-           stock, 
-           unidad_medida, 
-           activo 
-    FROM mae_producto 
-    WHERE activo = TRUE 
-    ORDER BY nombre;
+    SELECT p.id_producto, 
+        p.nombre, 
+        p.descripcion, 
+        p.precio_base, 
+        p.stock, 
+        p.unidad_medida, 
+        p.activo 
+    FROM mae_producto p
+    WHERE p.activo = TRUE 
+    ORDER BY p.nombre;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1145,13 +1201,13 @@ CREATE OR REPLACE FUNCTION sp_actualizar_producto(
 RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_producto 
-    SET nombre = p_nombre, 
-        descripcion = p_descripcion, 
-        precio_base = p_precio_base, 
-        stock = p_stock, 
-        unidad_medida = p_unidad_medida, 
+    SET nombre = sp_actualizar_producto.p_nombre, 
+        descripcion = sp_actualizar_producto.p_descripcion, 
+        precio_base = sp_actualizar_producto.p_precio_base, 
+        stock = sp_actualizar_producto.p_stock, 
+        unidad_medida = sp_actualizar_producto.p_unidad_medida, 
         activo = TRUE 
-    WHERE id_producto = p_id_producto;
+    WHERE id_producto = sp_actualizar_producto.p_id_producto;
     
     RETURN QUERY SELECT 'Producto actualizado exitosamente'::TEXT;
 EXCEPTION
@@ -1166,7 +1222,7 @@ RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE mae_producto 
     SET activo = FALSE 
-    WHERE id_producto = p_id_producto;
+    WHERE id_producto = sp_desactivar_producto.p_id_producto;
     
     RETURN QUERY SELECT 'Producto desactivado exitosamente'::TEXT;
 EXCEPTION
@@ -1185,30 +1241,30 @@ RETURNS TABLE(mensaje TEXT, nuevo_stock INTEGER) AS $$
 DECLARE
     v_stock_actual INTEGER;
 BEGIN
-    SELECT stock INTO v_stock_actual 
-    FROM mae_producto 
-    WHERE id_producto = p_id_producto;
+    SELECT p.stock INTO v_stock_actual 
+    FROM mae_producto p
+    WHERE p.id_producto = sp_ajustar_stock_producto.p_id_producto;
     
-    IF p_tipo_movimiento = 'ENTRADA' THEN
+    IF sp_ajustar_stock_producto.p_tipo_movimiento = 'ENTRADA' THEN
         UPDATE mae_producto 
-        SET stock = stock + p_cantidad 
-        WHERE id_producto = p_id_producto;
+        SET stock = stock + sp_ajustar_stock_producto.p_cantidad 
+        WHERE id_producto = sp_ajustar_stock_producto.p_id_producto;
         
         RETURN QUERY 
         SELECT 'Stock incrementado exitosamente'::TEXT, 
-               (v_stock_actual + p_cantidad)::INTEGER;
-               
-    ELSIF p_tipo_movimiento = 'SALIDA' THEN
-        IF v_stock_actual < p_cantidad THEN
+            (v_stock_actual + sp_ajustar_stock_producto.p_cantidad)::INTEGER;
+            
+    ELSIF sp_ajustar_stock_producto.p_tipo_movimiento = 'SALIDA' THEN
+        IF v_stock_actual < sp_ajustar_stock_producto.p_cantidad THEN
             RAISE EXCEPTION 'Stock insuficiente. Stock actual: %', v_stock_actual;
         ELSE
             UPDATE mae_producto 
-            SET stock = stock - p_cantidad 
-            WHERE id_producto = p_id_producto;
+            SET stock = stock - sp_ajustar_stock_producto.p_cantidad 
+            WHERE id_producto = sp_ajustar_stock_producto.p_id_producto;
             
             RETURN QUERY 
             SELECT 'Stock reducido exitosamente'::TEXT, 
-                   (v_stock_actual - p_cantidad)::INTEGER;
+                (v_stock_actual - sp_ajustar_stock_producto.p_cantidad)::INTEGER;
         END IF;
     ELSE
         RAISE EXCEPTION 'Tipo de movimiento inválido. Use ENTRADA o SALIDA';
@@ -1219,7 +1275,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- Movimientos de inventario
+-- MOVIMIENTOS DE INVENTARIO
 
 DROP FUNCTION IF EXISTS sp_obtener_movimientos_inventario();
 CREATE OR REPLACE FUNCTION sp_obtener_movimientos_inventario()
@@ -1235,12 +1291,12 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY 
     SELECT d.id_documento, 
-           d.tipo_doc, 
-           d.fecha_emision, 
-           p.nombre::VARCHAR(50) AS producto, 
-           dt.cantidad, 
-           d.estado_doc, 
-           'SALIDA'::TEXT AS tipo_movimiento
+        d.tipo_doc, 
+        d.fecha_emision, 
+        p.nombre::VARCHAR(50) AS producto, 
+        dt.cantidad, 
+        d.estado_doc, 
+        'SALIDA'::TEXT AS tipo_movimiento
     FROM trs_detalle_documento dt 
     JOIN trs_encabezado_documento d ON dt.id_documento = d.id_documento 
     JOIN mae_producto p ON dt.id_producto = p.id_producto
@@ -1250,7 +1306,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Documentos
+-- DOCUMENTOS
 
 DROP FUNCTION IF EXISTS sp_obtener_documentos_empresa(INTEGER);
 CREATE OR REPLACE FUNCTION sp_obtener_documentos_empresa(p_id_empresa INTEGER)
@@ -1266,17 +1322,17 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY 
     SELECT d.id_documento, 
-           d.tipo_doc, 
-           d.fecha_emision, 
-           (c.nombre || ' ' || c.apellido)::TEXT AS cliente, 
-           fp.nombre::VARCHAR(35) AS forma_pago, 
-           m.codigo_iso::CHAR(3) AS moneda, 
-           d.estado_doc
+        d.tipo_doc, 
+        d.fecha_emision, 
+        (c.nombre || ' ' || c.apellido)::TEXT AS cliente, 
+        fp.nombre::VARCHAR(35) AS forma_pago, 
+        m.codigo_iso::CHAR(3) AS moneda, 
+        d.estado_doc
     FROM trs_encabezado_documento d 
     JOIN mae_cliente c ON d.id_cliente = c.id_cliente 
     JOIN mae_forma_pago fp ON d.id_forma_pago = fp.id_forma_pago 
     JOIN mae_moneda m ON d.id_moneda = m.id_moneda
-    WHERE d.id_empresa = p_id_empresa 
+    WHERE d.id_empresa = sp_obtener_documentos_empresa.p_id_empresa 
     ORDER BY d.fecha_emision DESC, d.id_documento DESC;
 END;
 $$ LANGUAGE plpgsql;
@@ -1293,13 +1349,13 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY 
     SELECT p.nombre::VARCHAR(50) AS producto, 
-           dt.cantidad, 
-           dt.subtotal, 
-           dt.igv, 
-           dt.importe 
+        dt.cantidad, 
+        dt.subtotal, 
+        dt.igv, 
+        dt.importe 
     FROM trs_detalle_documento dt 
     JOIN mae_producto p ON dt.id_producto = p.id_producto 
-    WHERE dt.id_documento = p_id_documento;
+    WHERE dt.id_documento = sp_obtener_detalle_documento.p_id_documento;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1311,8 +1367,8 @@ CREATE OR REPLACE FUNCTION sp_actualizar_estado_documento(
 RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE trs_encabezado_documento 
-    SET estado_doc = p_nuevo_estado 
-    WHERE id_documento = p_id_documento;
+    SET estado_doc = sp_actualizar_estado_documento.p_nuevo_estado 
+    WHERE id_documento = sp_actualizar_estado_documento.p_id_documento;
     
     RETURN QUERY SELECT 'Estado del documento actualizado exitosamente'::TEXT;
 EXCEPTION
@@ -1321,7 +1377,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- Guías de remisión
+-- GUÍAS DE REMISIÓN
 
 DROP FUNCTION IF EXISTS sp_obtener_guias_empresa(INTEGER);
 CREATE OR REPLACE FUNCTION sp_obtener_guias_empresa(p_id_empresa INTEGER)
@@ -1342,22 +1398,22 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY 
     SELECT g.id_guia, 
-           g.nro_guia, 
-           g.fecha_emision, 
-           g.fecha_inicio_traslado, 
-           g.motivo_traslado, 
-           g.direccion_partida, 
-           g.direccion_llegada, 
-           c.nombre::VARCHAR(50) AS conductor, 
-           v.descripcion::VARCHAR(50) AS vehiculo, 
-           g.estado_guia, 
-           d.tipo_doc, 
-           d.id_documento
+        g.nro_guia, 
+        g.fecha_emision, 
+        g.fecha_inicio_traslado, 
+        g.motivo_traslado, 
+        g.direccion_partida, 
+        g.direccion_llegada, 
+        c.nombre::VARCHAR(50) AS conductor, 
+        v.descripcion::VARCHAR(50) AS vehiculo, 
+        g.estado_guia, 
+        d.tipo_doc, 
+        d.id_documento
     FROM trs_encabezado_guia g 
     JOIN trs_encabezado_documento d ON g.id_doc_venta = d.id_documento 
     JOIN mae_conductor c ON g.id_conductor = c.id_conductor 
     JOIN mae_vehiculo v ON g.id_vehiculo = v.id_vehiculo
-    WHERE d.id_empresa = p_id_empresa 
+    WHERE d.id_empresa = sp_obtener_guias_empresa.p_id_empresa 
     ORDER BY g.fecha_emision DESC, g.id_guia DESC;
 END;
 $$ LANGUAGE plpgsql;
@@ -1374,13 +1430,13 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY 
     SELECT p.nombre::VARCHAR(50) AS producto, 
-           dg.descripcion, 
-           dg.unidad_medida, 
-           dg.peso_total_carga, 
-           dg.modalidad_trans 
+        dg.descripcion, 
+        dg.unidad_medida, 
+        dg.peso_total_carga, 
+        dg.modalidad_trans 
     FROM trs_detalle_guia dg 
     JOIN mae_producto p ON dg.id_producto = p.id_producto 
-    WHERE dg.id_guia = p_id_guia;
+    WHERE dg.id_guia = sp_obtener_detalle_guia.p_id_guia;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1392,8 +1448,8 @@ CREATE OR REPLACE FUNCTION sp_actualizar_estado_guia(
 RETURNS TABLE(mensaje TEXT) AS $$
 BEGIN
     UPDATE trs_encabezado_guia 
-    SET estado_guia = p_nuevo_estado 
-    WHERE id_guia = p_id_guia;
+    SET estado_guia = sp_actualizar_estado_guia.p_nuevo_estado 
+    WHERE id_guia = sp_actualizar_estado_guia.p_id_guia;
     
     RETURN QUERY SELECT 'Estado de la guía actualizado exitosamente'::TEXT;
 EXCEPTION
@@ -1402,7 +1458,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- Combos
+-- COMBOS
 
 DROP FUNCTION IF EXISTS sp_obtener_ubicaciones_combo();
 CREATE OR REPLACE FUNCTION sp_obtener_ubicaciones_combo()
@@ -1412,11 +1468,11 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_ubicacion, 
-           descripcion 
-    FROM mae_ubicacion 
-    WHERE activo = TRUE 
-    ORDER BY descripcion;
+    SELECT u.id_ubicacion, 
+        u.descripcion 
+    FROM mae_ubicacion u
+    WHERE u.activo = TRUE 
+    ORDER BY u.descripcion;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1429,12 +1485,12 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_identidad, 
-           tipo_identificacion, 
-           codigo_documento 
-    FROM mae_identidad 
-    WHERE activo = TRUE 
-    ORDER BY tipo_identificacion, codigo_documento;
+    SELECT i.id_identidad, 
+        i.tipo_identificacion, 
+        i.codigo_documento 
+    FROM mae_identidad i
+    WHERE i.activo = TRUE 
+    ORDER BY i.tipo_identificacion, i.codigo_documento;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1447,12 +1503,12 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_cliente, 
-           nombre, 
-           apellido 
-    FROM mae_cliente 
-    WHERE activo = TRUE 
-    ORDER BY nombre, apellido;
+    SELECT c.id_cliente, 
+        c.nombre, 
+        c.apellido 
+    FROM mae_cliente c
+    WHERE c.activo = TRUE 
+    ORDER BY c.nombre, c.apellido;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1464,11 +1520,11 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_forma_pago, 
-           nombre 
-    FROM mae_forma_pago 
-    WHERE activo = TRUE 
-    ORDER BY nombre;
+    SELECT fp.id_forma_pago, 
+        fp.nombre 
+    FROM mae_forma_pago fp
+    WHERE fp.activo = TRUE 
+    ORDER BY fp.nombre;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1481,12 +1537,12 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_moneda, 
-           codigo_iso, 
-           nombre 
-    FROM mae_moneda 
-    WHERE activo = TRUE 
-    ORDER BY nombre;
+    SELECT m.id_moneda, 
+        m.codigo_iso, 
+        m.nombre 
+    FROM mae_moneda m
+    WHERE m.activo = TRUE 
+    ORDER BY m.nombre;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1500,13 +1556,13 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_producto, 
-           nombre, 
-           precio_base, 
-           stock 
-    FROM mae_producto 
-    WHERE activo = TRUE 
-    ORDER BY nombre;
+    SELECT p.id_producto, 
+        p.nombre, 
+        p.precio_base, 
+        p.stock 
+    FROM mae_producto p
+    WHERE p.activo = TRUE 
+    ORDER BY p.nombre;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1519,12 +1575,12 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_conductor, 
-           nombre, 
-           n_licencia 
-    FROM mae_conductor 
-    WHERE activo = TRUE 
-    ORDER BY nombre;
+    SELECT c.id_conductor, 
+        c.nombre, 
+        c.n_licencia 
+    FROM mae_conductor c
+    WHERE c.activo = TRUE 
+    ORDER BY c.nombre;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1537,12 +1593,12 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY 
-    SELECT id_vehiculo, 
-           descripcion, 
-           placa 
-    FROM mae_vehiculo 
-    WHERE activo = TRUE 
-    ORDER BY descripcion;
+    SELECT v.id_vehiculo, 
+        v.descripcion, 
+        v.placa 
+    FROM mae_vehiculo v
+    WHERE v.activo = TRUE 
+    ORDER BY v.descripcion;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1557,17 +1613,17 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY 
     SELECT d.id_documento, 
-           d.tipo_doc, 
-           d.fecha_emision, 
-           (c.nombre || ' ' || c.apellido)::TEXT AS cliente
+        d.tipo_doc, 
+        d.fecha_emision, 
+        (c.nombre || ' ' || c.apellido)::TEXT AS cliente
     FROM trs_encabezado_documento d 
     JOIN mae_cliente c ON d.id_cliente = c.id_cliente
-    WHERE d.id_empresa = p_id_empresa 
-      AND d.estado_doc = 'EMITIDO' 
-      AND d.id_documento NOT IN (
-          SELECT id_doc_venta 
-          FROM trs_encabezado_guia
-      )
+    WHERE d.id_empresa = sp_obtener_documentos_emitidos.p_id_empresa 
+    AND d.estado_doc = 'EMITIDO' 
+    AND d.id_documento NOT IN (
+        SELECT id_doc_venta 
+        FROM trs_encabezado_guia
+    )
     ORDER BY d.fecha_emision DESC;
 END;
 $$ LANGUAGE plpgsql;
@@ -1583,16 +1639,16 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY 
     SELECT p.id_producto, 
-           p.nombre, 
-           dt.cantidad, 
-           p.unidad_medida 
+        p.nombre, 
+        dt.cantidad, 
+        p.unidad_medida 
     FROM trs_detalle_documento dt 
     JOIN mae_producto p ON dt.id_producto = p.id_producto 
-    WHERE dt.id_documento = p_id_documento;
+    WHERE dt.id_documento = sp_obtener_productos_documento.p_id_documento;
 END;
 $$ LANGUAGE plpgsql;
 
--- Validaciones
+-- VALIDACIONES
 
 DROP FUNCTION IF EXISTS sp_verificar_guia_existe(VARCHAR);
 CREATE OR REPLACE FUNCTION sp_verificar_guia_existe(p_nro_guia VARCHAR(20))
@@ -1601,6 +1657,6 @@ BEGIN
     RETURN QUERY 
     SELECT COUNT(*)::BIGINT AS existe 
     FROM trs_encabezado_guia 
-    WHERE nro_guia = p_nro_guia;
+    WHERE nro_guia = sp_verificar_guia_existe.p_nro_guia;
 END;
 $$ LANGUAGE plpgsql;
