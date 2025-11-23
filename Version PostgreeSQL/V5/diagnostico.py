@@ -2,7 +2,6 @@
 import os
 import glob
 
-# Buscar en todas las versiones de PostgreSQL
 postgres_base_dir = r"C:\Program Files\PostgreSQL"
 
 print("Buscando archivos .conf con encoding incorrecto...\n")
@@ -20,6 +19,7 @@ if os.path.exists(postgres_base_dir):
 else:
     print("✗ No se encontró el directorio de PostgreSQL")
     exit(1)
+
 
 for archivo in archivos_conf:
     try:

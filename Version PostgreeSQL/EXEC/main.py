@@ -1,0 +1,123 @@
+# main.py - VERSIÓN CORREGIDA
+
+import sys
+import os
+
+# ✅ CRÍTICO: Forzar encoding ANTES de cualquier importación
+if sys.platform == 'win32':
+    # Forzar UTF-8 en variables de entorno
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    os.environ['PGCLIENTENCODING'] = 'UTF8'
+    
+    # Forzar UTF-8 en streams de Python
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    
+    # Configurar locale para manejar rutas con caracteres especiales
+    try:
+        import locale
+        # Usar el locale del sistema pero forzar UTF-8 donde sea posible
+        locale.setlocale(locale.LC_ALL, '')
+    except:
+        pass
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from vista.postgres_config import abrir_config_postgres
+from vista.login import abrir_login
+from datos.conexion import ConexionDB
+
+def verificar_usuario_existe():
+    """
+    Verifica si el usuario 'lolcito' existe en PostgreSQL.
+    Retorna True si existe, False si no.
+    """
+    try:
+        db = ConexionDB()
+        db.conectar()
+        
+        if db.engine:
+            db.desconectar()
+            return True
+        return False
+    except:
+        return False
+
+def probar_conexion_lolcito():
+    """
+    Intenta conectar con el usuario lolcito a la base de datos sistema_documentos.
+    Retorna True si la conexión es exitosa y la BD existe con las tablas necesarias.
+    """
+    db = ConexionDB()
+    
+    try:
+        # Intentar conectar
+        db.conectar()
+        
+        if not db.engine:
+            print("✗ No se pudo establecer conexión con la base de datos")
+            return False
+        
+        # Validar que existan las tablas principales
+        resultado = db.ejecutar("""
+            SELECT COUNT(*) as total
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            AND table_name IN ('mae_ubicacion', 'mae_cliente', 'mae_producto', 'trs_encabezado_documento')
+        """)
+        
+        if resultado and resultado[0]['total'] >= 4:
+            print("✓ Conexión exitosa con usuario 'lolcito' - Base de datos configurada correctamente")
+            db.desconectar()
+            return True
+        else:
+            print("✗ Base de datos existe pero faltan tablas - Se requiere reconfiguración")
+            db.desconectar()
+            return False
+        
+    except Exception as e:
+        print(f"✗ Error al validar conexión: {e}")
+        db.desconectar()
+        return False
+
+
+if __name__ == "__main__":
+    print("\n" + "="*60)
+    print("INICIANDO SISTEMA DE DOCUMENTOS")
+    print("="*60 + "\n")
+    
+    # Verificar si el usuario lolcito existe
+    if not verificar_usuario_existe():
+        print("⚠ Usuario 'lolcito' no existe")
+        print("→ Se requiere configuración inicial de PostgreSQL...\n")
+        
+        # ✅ Abrir configuración y verificar si fue exitosa
+        config_exitosa = abrir_config_postgres()
+        
+        if config_exitosa:
+            # Si la configuración fue exitosa, ir al login
+            print("\n→ Redirigiendo al login...\n")
+            abrir_login()
+        else:
+            # Si se canceló o falló, salir
+            print("\n→ Configuración cancelada o fallida. Saliendo...\n")
+            
+    elif probar_conexion_lolcito():
+        # Usuario existe y BD está completa
+        print("→ Redirigiendo al login...\n")
+        abrir_login()
+    else:
+        # Usuario existe pero BD no está completa
+        print("→ Se requiere configuración de la base de datos...\n")
+        
+        # ✅ Abrir configuración y verificar si fue exitosa
+        config_exitosa = abrir_config_postgres()
+        
+        if config_exitosa:
+            # Si la configuración fue exitosa, ir al login
+            print("\n→ Redirigiendo al login...\n")
+            abrir_login()
+        else:
+            # Si se canceló o falló, salir
+            print("\n→ Configuración cancelada o fallida. Saliendo...\n")
