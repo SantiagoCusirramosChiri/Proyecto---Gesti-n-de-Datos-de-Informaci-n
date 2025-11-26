@@ -109,8 +109,6 @@ class TablaCustom(ctk.CTkFrame):
         
         return frame_fila
     
-    # Agrega botones de acción a una fila
-    # Cada botón puede ser: (texto, comando) o (texto, comando, color, hover_color)
     def agregar_botones_accion(self, frame_fila, botones: list):
         frame_botones = ctk.CTkFrame(
             frame_fila,
@@ -119,7 +117,7 @@ class TablaCustom(ctk.CTkFrame):
         frame_botones.pack(side="right", padx=5)
         
         for boton_info in botones:
-            # Soporta tanto tuplas de 2 elementos como de 4 elementos
+
             if len(boton_info) == 2:
                 texto, comando = boton_info
                 color_fg = COLOR_ROJO_PRIMARY

@@ -326,7 +326,6 @@ def abrir_formulario(frame_principal, id_empresa, cliente_editar=None, callback_
             messagebox.showerror("Error", "Ubicación inválida", parent=ventana_form)
             return
         
-        # ✅ CONFIRMACIÓN ANTES DE GUARDAR
         if es_edicion:
             respuesta = messagebox.askyesno(
                 "Confirmar Actualización",
