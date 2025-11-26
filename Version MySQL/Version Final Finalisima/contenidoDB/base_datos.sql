@@ -1,12 +1,6 @@
--- Eliminar la base de datos si existe y crearla
 DROP DATABASE IF EXISTS sistema_documentos;
 
 CREATE DATABASE sistema_documentos;
-
--- Conectarse a la base de datos (esto se hace fuera del script en PostgreSQL)
--- \c sistema_documentos;
-
--- TABLAS MAESTRAS
 
 CREATE TABLE mae_ubicacion (
     id_ubicacion SERIAL PRIMARY KEY,
@@ -159,7 +153,7 @@ CREATE TABLE trs_detalle_guia (
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
--- Tabla de log de eliminaciones (se crea después ya que referencia otras tablas)
+
 CREATE TABLE log_eliminaciones (
     id_log SERIAL PRIMARY KEY,
     tabla VARCHAR(50) NOT NULL,

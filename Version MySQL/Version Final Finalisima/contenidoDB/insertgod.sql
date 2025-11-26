@@ -1,7 +1,3 @@
--- Conectarse a la base de datos (esto se hace fuera del script en PostgreSQL)
--- \c sistema_documentos;
-
--- Insertar ubicaciones
 INSERT INTO mae_ubicacion (descripcion) VALUES
 ('Avenida San Martin 507'),
 ('Avenida Bolognesi 312'),
@@ -14,7 +10,6 @@ INSERT INTO mae_ubicacion (descripcion) VALUES
 ('Calle Francisco Laso 221'),
 ('Pasaje Las Bugambillas 89');
 
--- Insertar identidades
 INSERT INTO mae_identidad (tipo_identificacion, codigo_documento) VALUES
 ('DNI', '76543211'),
 ('DNI', '76234567'),
@@ -27,7 +22,6 @@ INSERT INTO mae_identidad (tipo_identificacion, codigo_documento) VALUES
 ('DNI', '70123456'),
 ('DNI', '70098765');
 
--- Insertar clientes
 INSERT INTO mae_cliente (nombre, apellido, id_ubicacion, id_identidad) VALUES
 ('Carlos', 'Ramirez', 1, 1),
 ('Maria', 'Torres', 2, 2),
@@ -40,11 +34,9 @@ INSERT INTO mae_cliente (nombre, apellido, id_ubicacion, id_identidad) VALUES
 ('Miguel', 'Valdez', 9, 9),
 ('Carmen', 'Chavez', 10, 10);
 
--- Insertar empresas
 INSERT INTO mae_empresa (nombre, razon_social, RUC, id_ubicacion) VALUES
 ('LIBRERIA DISTRIBUIDORA ANILU S.R.L.', 'LIBRERIA DISTRIBUIDORA ANILU S.R.L.', '20600026748', 1);
 
--- Insertar conductores
 INSERT INTO mae_conductor (nombre, n_licencia) VALUES
 ('Juan Perez', 'B12345678123'),
 ('Marcos Rojas', 'B87654321123'),
@@ -52,7 +44,6 @@ INSERT INTO mae_conductor (nombre, n_licencia) VALUES
 ('Jose Aguilar', 'B24681357123'),
 ('Ricardo Castillo', 'B99887766123');
 
--- Insertar vehiculos
 INSERT INTO mae_vehiculo (descripcion, placa) VALUES
 ('Camioneta Toyota Hilux Blanca', 'ABC-123'),
 ('Furgon Hyundai H1 Gris', 'XYZ-456'),
@@ -60,7 +51,6 @@ INSERT INTO mae_vehiculo (descripcion, placa) VALUES
 ('Motocicleta Honda Cargo', 'HND-321'),
 ('Camioneta Nissan Frontier Roja', 'NSN-654');
 
--- Insertar productos
 INSERT INTO mae_producto (nombre, descripcion, precio_base, stock, unidad_medida) VALUES
 ('Cuaderno College 100 hojas', 'Cuaderno A4 de 100 hojas, marca Justus', 8.50, 120, 'UND'),
 ('Lapicero BIC Azul', 'Lapicero azul punta fina', 1.50, 500, 'UND'),
@@ -73,7 +63,6 @@ INSERT INTO mae_producto (nombre, descripcion, precio_base, stock, unidad_medida
 ('Corrector Liquido Pelikan', 'Corrector blanco con brocha', 4.50, 180, 'UND'),
 ('Folder Manila A4', 'Folder tamaño A4 color manila', 1.20, 350, 'UND');
 
--- Insertar formas de pago
 INSERT INTO mae_forma_pago (nombre, descripcion) VALUES
 ('Efectivo', 'Pago en moneda fisica'),
 ('Tarjeta de Credito', 'Pago con tarjeta VISA o MasterCard'),
@@ -81,12 +70,11 @@ INSERT INTO mae_forma_pago (nombre, descripcion) VALUES
 ('Yape', 'Pago digital mediante aplicativo Yape'),
 ('Plin', 'Pago digital mediante aplicativo Plin');
 
--- Insertar monedas
 INSERT INTO mae_moneda (codigo_iso, nombre) VALUES
 ('PEN', 'Soles'),
 ('USD', 'Dolares');
 
--- Insertar encabezados de documentos
+
 INSERT INTO trs_encabezado_documento (tipo_doc, fecha_emision, id_empresa, id_cliente, id_forma_pago, id_moneda) VALUES
 ('Boleta', '2025-10-01', 1, 1, 1, 1),
 ('Factura', '2025-10-01', 1, 2, 2, 1),
@@ -99,7 +87,6 @@ INSERT INTO trs_encabezado_documento (tipo_doc, fecha_emision, id_empresa, id_cl
 ('Factura', '2025-10-06', 1, 9, 3, 1),
 ('Boleta', '2025-10-07', 1, 10, 1, 1);
 
--- Insertar detalle de documentos 
 INSERT INTO trs_detalle_documento (id_documento, id_producto, cantidad, subtotal, igv, importe) VALUES
 (1, 1, 2, 0, 0, 0),
 (1, 3, 4, 0, 0, 0),
@@ -121,7 +108,6 @@ INSERT INTO trs_detalle_documento (id_documento, id_producto, cantidad, subtotal
 (10, 1, 3, 0, 0, 0),
 (10, 6, 2, 0, 0, 0);
 
--- Insertar encabezado de guias
 INSERT INTO trs_encabezado_guia (id_doc_venta, nro_guia, fecha_emision, fecha_inicio_traslado, motivo_traslado, direccion_partida, direccion_llegada, id_conductor, id_vehiculo) VALUES
 (2, 'GR-0001', '2025-10-02', '2025-10-02', 'Entrega de material educativo', 'Avenida San Martin 507', 'Calle Mariano Santos 315', 1, 1),
 (4, 'GR-0002', '2025-10-02', '2025-10-03', 'Reparto de libros a institucion educativa', 'Avenida Bolognesi 312', 'Calle Cajamarca 188', 2, 2),
@@ -129,7 +115,6 @@ INSERT INTO trs_encabezado_guia (id_doc_venta, nro_guia, fecha_emision, fecha_in
 (9, 'GR-0004', '2025-10-06', '2025-10-07', 'Entrega a cliente corporativo', 'Avenida 28 de Agosto 356', 'Calle Francisco Laso 221', 4, 1),
 (10, 'GR-0005', '2025-10-07', '2025-10-07', 'Envio de utiles escolares', 'Calle Alto Lima 134', 'Avenida Justo Arias Araquez 189', 5, 2);
 
--- Insertar detalle de guias
 INSERT INTO trs_detalle_guia (id_guia, id_producto, descripcion, unidad_medida, unidad_peso_bruto, peso_total_carga, modalidad_trans, transbordo_prog, categoriaM1_L, retorno_envases, vehiculo_vacio, id_conductor, id_vehiculo) VALUES
 (1, 2, 'Lapiceros BIC', 'UND', 'KG', 2.5, 'Privado', 'NO', 'M1', 'NO', 'NO', 1, 1),
 (1, 7, 'Resaltadores Amarillos', 'UND', 'KG', 0.8, 'Privado', 'NO', 'M1', 'NO', 'NO', 1, 1),
