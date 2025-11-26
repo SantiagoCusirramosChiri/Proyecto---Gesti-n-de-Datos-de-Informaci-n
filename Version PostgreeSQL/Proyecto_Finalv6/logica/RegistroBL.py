@@ -189,12 +189,6 @@ class RegistroBL:
 
     @staticmethod
     def validar_nombre_empresa(nombre: str) -> Tuple[bool, str]:
-        """
-        Valida el nombre de la empresa.
-        
-        Returns:
-            Tuple[bool, str]: (válido, mensaje)
-        """
         if not nombre or nombre.strip() == "":
             return False, "El nombre no puede estar vacío"
         
