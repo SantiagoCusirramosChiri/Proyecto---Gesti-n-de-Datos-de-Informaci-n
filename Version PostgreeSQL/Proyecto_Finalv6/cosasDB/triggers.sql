@@ -270,10 +270,6 @@ CREATE TRIGGER trg_before_insert_mae_empresa
     EXECUTE FUNCTION trg_before_insert_mae_empresa();
 
 
--- ============================================
--- SECCIÓN 2: TRIGGERS DE ELIMINACIÓN
--- ============================================
-
 -- 2.1 mae_ubicacion
 CREATE OR REPLACE FUNCTION trg_before_delete_mae_ubicacion()
 RETURNS TRIGGER AS $$
@@ -387,10 +383,6 @@ CREATE TRIGGER trg_before_delete_mae_producto
     EXECUTE FUNCTION trg_before_delete_mae_producto();
 
 
--- ============================================
--- SECCIÓN 3: TRIGGERS DE VALIDACIÓN
--- ============================================
-
 -- 3.1 RUC único para empresas activas
 CREATE OR REPLACE FUNCTION trg_before_insert_mae_empresa_ruc_unico()
 RETURNS TRIGGER AS $$
@@ -484,11 +476,6 @@ CREATE TRIGGER trg_before_insert_detalle_documento_cantidad
     BEFORE INSERT ON trs_detalle_documento
     FOR EACH ROW
     EXECUTE FUNCTION trg_before_insert_detalle_documento_cantidad();
-
-
--- ============================================
--- SECCIÓN 4: TRIGGERS DE DOCUMENTOS
--- ============================================
 
 -- 4.1 Asignar fecha automática si no se proporciona
 CREATE OR REPLACE FUNCTION trg_before_insert_documento()
@@ -632,10 +619,6 @@ CREATE TRIGGER trg_after_update_documento_emitido
     EXECUTE FUNCTION trg_after_update_documento_emitido();
 
 
--- ============================================
--- SECCIÓN 5: TRIGGERS DE GUÍAS
--- ============================================
-
 -- 5.1 Impedir crear guía con número usado
 CREATE OR REPLACE FUNCTION trg_before_insert_guia()
 RETURNS TRIGGER AS $$
@@ -710,31 +693,3 @@ CREATE TRIGGER trg_before_update_guia_bloqueo
     BEFORE UPDATE ON trs_encabezado_guia
     FOR EACH ROW
     EXECUTE FUNCTION trg_before_update_guia_bloqueo();
-
-
--- ============================================
--- VERIFICACIÓN FINAL
--- ============================================
-
-DO $$
-BEGIN
-    RAISE NOTICE '============================================';
-    RAISE NOTICE '✅ SCRIPT COMPLETO EJECUTADO CORRECTAMENTE';
-    RAISE NOTICE '============================================';
-    RAISE NOTICE 'Triggers de reactivación: CORREGIDOS (RAISE NOTICE + RETURN NULL)';
-    RAISE NOTICE 'Triggers de eliminación: ACTIVOS';
-    RAISE NOTICE 'Triggers de validación: ACTIVOS';
-    RAISE NOTICE 'Triggers de documentos: ACTIVOS';
-    RAISE NOTICE 'Triggers de guías: ACTIVOS';
-    RAISE NOTICE '============================================';
-END $$;
-
--- Ver resumen de todos los triggers
-SELECT 
-    tgrelid::regclass AS tabla,
-    tgname AS trigger,
-    proname AS funcion
-FROM pg_trigger
-JOIN pg_proc ON pg_trigger.tgfoid = pg_proc.oid
-WHERE tgname LIKE 'trg_%'
-ORDER BY tabla, trigger;
