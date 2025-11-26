@@ -1,4 +1,4 @@
-# main.py - VERSIÓN CORREGIDA
+# main.py 
 
 import sys
 import os
